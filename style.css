@@ -96,3 +96,11 @@ body.tilt .steer{display:none}
 #banner{position:fixed;left:50%;top:18%;transform:translateX(-50%);padding:8px 20px;border-radius:12px;background:rgba(0,0,0,.55);font-weight:800;font-size:22px;pointer-events:none;white-space:nowrap}
 #flash{position:fixed;inset:0;pointer-events:none;background:#fff;opacity:0;transition:opacity .25s}
 #rotate{position:fixed;left:0;right:0;bottom:0;text-align:center;padding:6px;font-size:12px;background:rgba(0,0,0,.6);z-index:60;pointer-events:none}
+
+/* ---- портретний режим (поворот CSS): відступ від статус-бару/чубчика ---- */
+body.rot .head{left:80px;top:16px}
+body.rot #hPos{left:80px}
+body.rot #hLap{left:82px}
+body.rot .steer[data-k=left]{left:80px}
+body.rot .steer[data-k=right]{left:186px}
+body.rot .ver{left:80px}
