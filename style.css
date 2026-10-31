@@ -104,3 +104,12 @@ body.rot #hLap{left:82px}
 body.rot .steer[data-k=left]{left:80px}
 body.rot .steer[data-k=right]{left:186px}
 body.rot .ver{left:80px}
+
+#hDrift{position:absolute;left:50%;transform:translateX(-50%);top:max(10px,env(safe-area-inset-top));text-align:center;display:none;min-width:200px;background:rgba(0,0,0,.38);padding:4px 16px 6px;border-radius:14px;line-height:1.05}
+body.free #hDrift{display:block}
+body.free #hPos,body.free #hLap,body.free #hTime,body.free #mini{display:none}
+#hDrift small{display:block;font-size:11px;letter-spacing:2px;color:var(--dim)}
+#hDrift b{font-size:34px;font-weight:900;font-style:italic;font-variant-numeric:tabular-nums}
+#hDrift em{font-size:22px;font-weight:900;color:#ffc247;margin-left:6px;font-style:italic}
+#hDrift.act b{color:#ffc247}
+#hDrift .tot{font-size:11px;color:var(--dim);margin-top:2px}

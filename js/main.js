@@ -1,17 +1,18 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { TRACK_DEFS, nearest, clamp, lerp, angDiff } from "./trackmath.js";
 import { buildWorld, makeSky } from "./world.js";
+import { buildArena, ARENAS } from "./arena.js";
 import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide } from "./car.js";
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 5;
+const BUILD = 6;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- збереження ---------------- */
 const SK = "turbo_v1";
-let S = { coins: 0, owned: ["city"], car: "city", colors: {}, best: {}, bestLap: {}, sound: true, auto: true, quality: "mid", diff: 1, laps: 3, assist: true, last: 0, tilt: false, tiltInv: /iPhone|iPad|iPod/.test(navigator.userAgent) };
+let S = { driftBest: 0, driftTotal: 0, coins: 0, owned: ["city"], car: "city", colors: {}, best: {}, bestLap: {}, sound: true, auto: true, quality: "mid", diff: 1, laps: 3, assist: true, last: 0, tilt: false, tiltInv: /iPhone|iPad|iPod/.test(navigator.userAgent) };
 try { Object.assign(S, JSON.parse(localStorage.getItem(SK) || "{}")); } catch (e) {}
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
 const QUAL = {
@@ -54,7 +55,7 @@ document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target
 /* ---------------- стан ---------------- */
 let W = null, T = null, scene = null, curTrack = -1, envRT = null;
 let cars = [], player = null, state = "loading", raceT = 0, countT = 0, countShown = -1, laps = 3, finishTimer = 0, camMode = 0, demoT = 0;
-let prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
+let freeKind = null, prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
 let skidMesh = null, skHead = 0, skCount = 0, skDirty = false, partPts = null, partMat = null;
 const SKN = 2600, PN = 180;
 const STEP = 1 / 90;
@@ -112,7 +113,7 @@ function playerInput() {
 }
 
 /* ---------------- екрани ---------------- */
-const SCREENS = ["sLoad", "sMain", "sTracks", "sGarage", "sSet", "sPause", "sRes"];
+const SCREENS = ["sLoad", "sMain", "sTracks", "sFree", "sGarage", "sSet", "sPause", "sRes"];
 function show(id) { SCREENS.forEach(s => $("#" + s).hidden = s !== id); }
 function hideAll() { SCREENS.forEach(s => $("#" + s).hidden = true); }
 $$("[data-back]").forEach(b => b.addEventListener("click", () => toMenu(b.dataset.back)));
@@ -120,11 +121,13 @@ const fmtT = ms => { if (!isFinite(ms) || ms <= 0) return "—"; const m = Math.
 function updCoins() { $("#mCoins").textContent = S.coins; $$(".cN").forEach(e => e.textContent = S.coins); }
 function banner(t, ms = 1800) { const b = $("#banner"); b.textContent = t; b.hidden = false; clearTimeout(banner.t); banner.t = setTimeout(() => (b.hidden = true), ms); }
 
-function toMenu(id = "sMain") {
+async function toMenu(id = "sMain") {
+  if (freeKind && id !== "sFree") { await leaveFree(); }
   if (state === "garage" && id !== "sGarage") leaveGarage();
   if (id === "sMain" && (state !== "menu")) enterMenu();
   show(id); updCoins();
   if (id === "sTracks") buildTrackList();
+  if (id === "sFree") buildFreeList();
   if (id === "sSet") buildSettings();
 }
 function enterMenu() {
@@ -132,6 +135,7 @@ function enterMenu() {
   spawn("demo"); state = "menu";
 }
 $("#mPlay").onclick = () => { A.audioInit(); toMenu("sTracks"); };
+$("#mFree").onclick = () => { A.audioInit(); toMenu("sFree"); };
 $("#mGarage").onclick = () => { A.audioInit(); enterGarage(); };
 $("#mSet").onclick = () => toMenu("sSet");
 
@@ -143,6 +147,17 @@ function buildTrackList() {
     const t = S.best[d.id];
     b.innerHTML = `<div class="pic" style="background:${grads[d.theme]}"></div><div class="t"><h3>${d.name}</h3><p>${d.sub}</p><div class="row"><span class="stars">${"★".repeat(d.diff)}${"☆".repeat(4 - d.diff)}</span><span>${t ? "🏁 " + fmtT(t) : "ще не їхав"}</span></div></div>`;
     b.onclick = () => startRace(i);
+    el.appendChild(b);
+  });
+}
+
+function buildFreeList() {
+  const el = $("#freeList"); el.innerHTML = "";
+  const grads = { lot: "linear-gradient(180deg,#28345e,#ff9a58 55%,#6d6f74 56%)", city: "linear-gradient(180deg,#02040c,#243a6a 45%,#ffd98a 46%,#1b2130 70%)" };
+  ARENAS.forEach(a => {
+    const b = document.createElement("button"); b.className = "card";
+    b.innerHTML = `<div class="pic" style="background:${grads[a.id]}"></div><div class="t"><h3>${a.name}</h3><p>${a.sub}</p><div class="row"><span>Дрифт = очки і монети</span><span>🏆 ${S.driftBest || 0}</span></div></div>`;
+    b.onclick = () => startFree(a.id);
     el.appendChild(b);
   });
 }
@@ -193,7 +208,7 @@ async function hardRefresh() {
   } catch (e) {}
   location.reload();
 }
-async function reload() { const t = curTrack; curTrack = -1; await loadTrack(t); enterMenu(); }
+async function reload() { const t = curTrack < 0 ? clamp(S.last | 0, 0, TRACK_DEFS.length - 1) : curTrack; curTrack = -1; await loadTrack(t); enterMenu(); }
 
 /* ---------------- завантаження траси ---------------- */
 function disposeWorld() {
@@ -208,7 +223,7 @@ function disposeWorld() {
 async function loadTrack(ti) {
   $("#loadTxt").textContent = "Будуємо трасу…"; show("sLoad");
   await new Promise(r => setTimeout(r, 40));
-  disposeWorld();
+  disposeWorld(); freeKind = null; miniBg = null;
   const def = TRACK_DEFS[ti], q = qual();
   renderer.shadowMap.enabled = !!q.shadow;
   W = buildWorld(def, q); T = W.T; scene = W.scene; curTrack = ti; S.last = ti; save();
@@ -300,10 +315,61 @@ function spawn(mode) {
 }
 function syncAll(dt) { for (const c of cars) { syncModel(c, c.model, dt); } if (player) player.model.root.visible = camMode !== 1; }
 
+/* ---------------- вільний режим (дрифт) ---------------- */
+const dr = { cur: 0, t: 0, idle: 0, mult: 1, session: 0, earned: 0, hit: 0 };
+function drReset() { dr.cur = 0; dr.t = 0; dr.idle = 0; dr.mult = 1; dr.session = 0; dr.earned = 0; dr.hit = 0; }
+async function startFree(kind) {
+  A.audioInit();
+  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Будуємо локацію…"; await new Promise(r => setTimeout(r, 40));
+  disposeWorld(); const q = qual(); renderer.shadowMap.enabled = !!q.shadow;
+  W = buildArena(kind, q); T = W.T; scene = W.scene; curTrack = -1; freeKind = kind; miniBg = null;
+  W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
+  const es = new THREE.Scene(); es.add(makeSky(W.th));
+  envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
+  initEffects(); applySize();
+  $("#loadTxt").textContent = "Завантаження машини…"; await ensureCar(S.car);
+  spawnFree(); drReset();
+  try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {}
+  hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true;
+  document.body.classList.add("free"); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
+  state = "free"; snapCamera(); applySize();
+  banner("Тисни ДРИФТ і крути кермо — чим довше слайд, тим більше очок", 3200);
+}
+function spawnFree() {
+  for (const c of cars) scene.remove(c.model.root);
+  const sp = CARS.find(x => x.id === S.car) || CARS[0];
+  const c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf: 1 }); player = c; cars = [c];
+  const city = freeKind === "city";
+  c.x = city ? -53 : -30; c.z = city ? 53 : 0; c.a = 0; c.y = 0; c.idx = 0; c.pi = 0; c.lap = 1; c.grid = 0;
+  addModel(c, W.th, W.th.lamps); syncAll(.016);
+}
+function bankDrift(why) {
+  if (dr.cur < 30) { dr.cur = 0; dr.t = 0; dr.mult = 1; return; }
+  const pts = Math.round(dr.cur), coins = Math.max(1, Math.floor(pts / 40));
+  dr.session += pts; dr.earned += coins; S.coins += coins; S.driftTotal += pts;
+  if (pts > S.driftBest) { S.driftBest = pts; banner("Новий рекорд дрифту: " + pts + "! +" + coins + " 🪙", 2200); } else banner("Дрифт +" + pts + " · +" + coins + " 🪙", 1500);
+  save(); updCoins(); dr.cur = 0; dr.t = 0; dr.mult = 1;
+}
+function driftLogic(dt) {
+  const p = player; if (!p) return;
+  const ratio = p.slip / Math.max(p.speed, 1), on = p.speed > 9 && p.slip > 3 && ratio > .17 && !p.braking;
+  if (p.bump > .35 && dr.cur > 0) { dr.cur = 0; dr.t = 0; dr.mult = 1; dr.idle = 0; banner("Зіткнення — серія згоріла", 1100); return; }
+  if (on) {
+    dr.idle = 0; dr.t += dt; dr.mult = Math.min(6, 1 + Math.floor(dr.t / 1.8));
+    dr.cur += dt * (p.speed * 0.9 + p.slip * 3) * Math.min(1.6, ratio * 3) * dr.mult * .5;
+  } else if (dr.cur > 0) { dr.idle += dt; if (dr.idle > 1.1) { bankDrift(); dr.idle = 0; } }
+}
+async function leaveFree() {
+  if (!freeKind) return;
+  bankDrift(); freeKind = null; document.body.classList.remove("free");
+  await loadTrack(clamp(S.last | 0, 0, TRACK_DEFS.length - 1));
+  state = "loading";
+}
+
 /* ---------------- гонка ---------------- */
 async function startRace(ti) {
-  A.audioInit();
-  if (ti !== curTrack) await loadTrack(ti);
+  A.audioInit(); if (freeKind) { bankDrift(); document.body.classList.remove("free"); }
+  if (ti !== curTrack || freeKind) await loadTrack(ti);
   state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Завантаження машин…"; await new Promise(r => setTimeout(r, 30));
   await Promise.all(CARS.slice(0, CARS.findIndex(x => x.id === S.car) + 1).map(c => ensureCar(c.id)));
   laps = S.laps; spawn("race"); try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {} raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
@@ -338,7 +404,7 @@ function order() {
 let ordCache = [];
 function physStep(dt) {
   for (const c of cars) { const q = c._p || (c._p = {}); q.x = c.x; q.y = c.y; q.z = c.z; q.a = c.a; q.pitch = c.pitch; q.roll = c.roll; }
-  const racing = state === "race" || state === "finish" || state === "menu";
+  const racing = state === "race" || state === "finish" || state === "menu" || state === "free";
   const pin = playerInput();
   for (const c of cars) {
     let inp;
@@ -355,7 +421,8 @@ function physStep(dt) {
   }
   if (hit > .08) { A.thud(hit); camShake = Math.max(camShake, hit * .5); }
   if (player && player.bump > .05) { A.thud(player.bump); camShake = Math.max(camShake, player.bump * .6); }
-  if (state === "race" || state === "finish") { raceT += dt; for (const c of cars) lapLogic(c); }
+  if (state === "free") driftLogic(dt);
+  else if (state === "race" || state === "finish") { raceT += dt; for (const c of cars) lapLogic(c); }
   else if (state === "menu") for (const c of cars) c.pi = c.idx;
 }
 let camShake = 0;
@@ -450,6 +517,13 @@ function buildMini() {
   g.fillStyle = "#ff3d3d"; g.fillRect(T.x[0] * miniS.s + miniS.ox - 9, T.z[0] * miniS.s + miniS.oz - 3, 18, 6);
 }
 let hudT = 0, lastCurve = -1;
+function hudFree() {
+  const p = player; if (!p) return;
+  $("#hSpeed b").textContent = Math.round(p.speed * 3.6); $("#hGear").textContent = p.vf < -.5 ? "R" : p.gear;
+  const nb = $("#hNitro"); nb.firstElementChild.style.width = Math.round(p.nitro * 100) + "%"; nb.classList.toggle("on", p.boostT > 0);
+  const d = $("#hDrift"); d.classList.toggle("act", dr.cur > 0 && dr.idle < .05);
+  d.innerHTML = `<small>ДРИФТ</small><b>${Math.round(dr.cur)}</b>${dr.cur > 0 ? `<em>×${dr.mult}</em>` : ""}<div class="tot">Всього: ${dr.session} · 🪙 +${dr.earned} · рекорд ${S.driftBest}</div>`;
+}
 function hud(dt) {
   const p = player; if (!p) return;
   hudT += dt;
@@ -506,14 +580,14 @@ $("#gAct").onclick = () => {
 
 /* ---------------- пауза, результати ---------------- */
 function togglePause() {
-  if (state === "race" || state === "count") { prevState = state; state = "paused"; show("sPause"); }
+  if (state === "race" || state === "count" || state === "free") { prevState = state; state = "paused"; show("sPause"); }
   else if (state === "paused") resume();
 }
 let prevState = "race";
 function resume() { state = prevState; hideAll(); }
-onTap($("#bPause"), () => { if (state === "race" || state === "count") { prevState = state; state = "paused"; show("sPause"); } });
+onTap($("#bPause"), () => { if (state === "race" || state === "count" || state === "free") { prevState = state; state = "paused"; show("sPause"); } });
 $("#pResume").onclick = resume;
-$("#pRestart").onclick = () => startRace(curTrack);
+$("#pRestart").onclick = () => { if (freeKind) { const k = freeKind; bankDrift(); startFree(k); } else startRace(curTrack); };
 $("#pMenu").onclick = () => toMenu("sMain");
 $("#rAgain").onclick = () => startRace(curTrack);
 $("#rMenu").onclick = () => toMenu("sMain");
@@ -545,7 +619,7 @@ function simulate(dt) {
   acc += dt; let n = 0;
   while (acc >= STEP && n++ < 8) { physStep(STEP); acc -= STEP; }
   if (n >= 8) acc = 0;
-  rubT += dt; if (rubT > .4) { rubT = 0; rubber(); }
+  rubT += dt; if (rubT > .4) { rubT = 0; if (state !== "free") rubber(); }
   // неправильний напрямок
   if (player && (state === "race")) {
     const tg = Math.atan2(T.tz[player.idx], T.tx[player.idx]);
@@ -573,7 +647,7 @@ function frame(now) {
   let interp = false;
   if (cars.length && state !== "paused") {
     syncAll(dt); effects(dt);
-    if (state === "race" || state === "count" || state === "finish" || state === "menu") { applyInterp(acc / STEP); interp = true; syncAll(0); }
+    if (state === "race" || state === "count" || state === "finish" || state === "menu" || state === "free") { applyInterp(acc / STEP); interp = true; syncAll(0); }
   }
   if (state === "menu") { /* демо-заїзд */ }
   updateCamera(dt);
@@ -584,17 +658,17 @@ function frame(now) {
     const f = state === "garage" && prevModel ? prevModel.root.position : cars[0];
     W.sun.target.position.set(f.x, f.y, f.z); W.sun.position.set(f.x + W.sun.userData.dx, f.y + W.sun.userData.dy, f.z + W.sun.userData.dz); W.sun.target.updateMatrixWorld();
   }
-  if (player && (state === "race" || state === "count" || state === "finish")) hud(dt);
-  A.audioFrame(player, state === "race" || state === "finish" ? true : (state === "count" ? "idle" : false));
+  if (player && (state === "race" || state === "count" || state === "finish")) hud(dt); else if (state === "free") hudFree();
+  A.audioFrame(player, state === "race" || state === "finish" || state === "free" ? true : (state === "count" ? "idle" : false));
   renderer.render(scene, camera);
   if (interp) restoreInterp();
   // динамічна роздільність
-  if (state === "race") {
+  if (state === "race" || state === "free") {
     fpsAcc += dt; fpsN++; if (fpsN >= 40) { const avg = fpsAcc / fpsN; fpsAcc = fpsN = 0; if (fpsCool > 0) fpsCool--; else if (avg > 1 / 48 && prScale > .5) { prScale *= .85; applySize(); fpsCool = 2; } }
   }
 }
 
-document.addEventListener("visibilitychange", () => { if (document.hidden && state === "race") { prevState = state; state = "paused"; show("sPause"); } });
+document.addEventListener("visibilitychange", () => { if (document.hidden && (state === "race" || state === "free")) { prevState = state; state = "paused"; show("sPause"); } });
 
 /* ---------------- запуск ---------------- */
 async function boot() {
@@ -618,5 +692,5 @@ boot().then(async () => { for (const id of Object.keys(MODEL_FILE)) await ensure
 window.__g = {
   get state() { return state; }, get player() { return player; }, get cars() { return cars; }, get T() { return T; },
   advance(sec) { const n = Math.round(sec / STEP); for (let i = 0; i < n; i++) { if (state === "count") { countT -= STEP; if (countT <= 1) { state = "race"; raceT = 0; } } physStep(STEP); if (i % 30 === 0) rubber(); if (state === "finish") { finishTimer -= STEP; if (finishTimer <= 0) { showResults(); break; } } } syncAll(.016); },
-  setBot(v) { bot = v; }, snap() { snapCamera(); camera.fov = camFov = 60; camera.updateProjectionMatrix(); }, startRace, loadTrack, setCam(m) { camMode = m; }, get raceT() { return raceT; }, enterGarage, place: () => racePlace(player)
+  setBot(v) { bot = v; }, snap() { snapCamera(); camera.fov = camFov = 60; camera.updateProjectionMatrix(); }, startRace, startFree, loadTrack, setCam(m) { camMode = m; }, get raceT() { return raceT; }, enterGarage, place: () => racePlace(player)
 };

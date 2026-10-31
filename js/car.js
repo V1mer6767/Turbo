@@ -115,8 +115,8 @@ export class Car {
 export function stepCar(c, inp, dt, T, H) {
   const s = c.spec;
   if (inp.hold) { c.vx = c.vz = 0; c.vf = 0; c.steerS = 0; inp = { steer: 0, gas: false, brake: false, drift: false, nitro: false }; }
-  nearest(T, c.x, c.z, c.idx, c.nr); c.idx = c.nr.idx;
-  const lat = c.nr.lat, off = Math.abs(lat) > T.halfW + 1.2;
+  if (!T.free) { nearest(T, c.x, c.z, c.idx, c.nr); c.idx = c.nr.idx; }
+  const lat = T.free ? 0 : c.nr.lat, off = T.free ? false : Math.abs(lat) > T.halfW + 1.2;
   c.off = off;
   let fx = Math.cos(c.a), fz = Math.sin(c.a);
   let vf = c.vx * fx + c.vz * fz;
@@ -159,9 +159,10 @@ export function stepCar(c, inp, dt, T, H) {
   c.nitro = Math.min(1, c.nitro + (.012 + (drift ? Math.abs(vr) * .006 : 0) + (c.slip > 6 ? .02 : 0)) * dt);
   // відбійник
   c.bump = 0;
-  nearest(T, c.x, c.z, c.idx, c.nr);
-  const L2 = c.nr.lat;
-  if (Math.abs(L2) > T.barrier) {
+  if (T.free) c.bump = T.collide(c, fx, fz);
+  else nearest(T, c.x, c.z, c.idx, c.nr);
+  const L2 = T.free ? 0 : c.nr.lat;
+  if (!T.free && Math.abs(L2) > T.barrier) {
     const sg = Math.sign(L2), nx = T.nx[c.nr.idx] * sg, nz = T.nz[c.nr.idx] * sg, over = Math.abs(L2) - T.barrier;
     c.x -= nx * over; c.z -= nz * over;
     const vn = c.vx * nx + c.vz * nz;

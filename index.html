@@ -20,6 +20,7 @@
 
 <div id="hud" hidden>
   <div id="hPos"><b>6</b><span>/6</span></div>
+  <div id="hDrift"></div>
   <div id="hLap">Коло 1/3</div>
   <div id="hTime">0:00.00</div>
   <canvas id="mini" width="280" height="280"></canvas>
@@ -49,6 +50,7 @@
   <div class="coins">🪙 <b id="mCoins">0</b></div>
   <div class="menu">
     <button class="btn main" id="mPlay">Гонка</button>
+    <button class="btn" id="mFree">Вільна їзда · дрифт</button>
     <button class="btn" id="mGarage">Гараж</button>
     <button class="btn" id="mSet">Налаштування</button>
   </div>
@@ -58,6 +60,11 @@
 <div class="screen shade" id="sTracks" hidden>
   <div class="head"><button class="back" data-back="sMain">‹</button><h2>Обери трасу</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
   <div class="cards" id="trackList"></div>
+</div>
+
+<div class="screen shade" id="sFree" hidden>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Вільна їзда</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="cards" id="freeList"></div>
 </div>
 
 <div class="screen" id="sGarage" hidden>
