@@ -19,8 +19,8 @@ function extrude(pts, depth, bevel) {
   g.translate(0, 0, -(depth - bevel * 2) / 2); return g;
 }
 
-export function createCarModel(spec, color, envI = 1) {
-  if (hasCar(spec.id)) return buildGLB(spec, color, envI);
+export function createCarModel(spec, color, envI = 1, shadow = true) {
+  if (hasCar(spec.id)) return buildGLB(spec, color, envI, shadow);
   const L = spec.L, Wd = spec.W, roof = spec.roof, k = spec.kind;
   const root = new THREE.Group(); root.rotation.order = "YZX";
   const tilt = new THREE.Group(); tilt.rotation.order = "ZXY"; root.add(tilt);

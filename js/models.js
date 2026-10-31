@@ -20,7 +20,7 @@ export function ensureCar(id) {
   }));
 }
 
-export function buildGLB(spec, color, envI) {
+export function buildGLB(spec, color, envI, shadow = true) {
   const t = tpl[spec.id], meta = t.meta, L = meta.length, Wd = meta.width, H = meta.height;
   const root = new THREE.Group(); root.rotation.order = "YZX";
   const tilt = new THREE.Group(); tilt.rotation.order = "ZXY"; root.add(tilt);
@@ -33,12 +33,12 @@ export function buildGLB(spec, color, envI) {
     c.castShadow = shadow && !(c.material.transparent); c.receiveShadow = false;
     if (c.material.name === "glass") c.renderOrder = 2;
   });
-  const body = t.scene.getObjectByName("body").clone(true); fix(body, true); tilt.add(body);
+  const body = t.scene.getObjectByName("body").clone(true); fix(body, shadow); tilt.add(body);
   const wheels = []; let rs = 0;
   for (const q of ["fl", "fr", "rl", "rr"]) {
     const n = t.scene.getObjectByName("wheel_" + q), w = meta.wheels && meta.wheels[q]; if (!n || !w) continue;
     const pivot = new THREE.Group(); pivot.position.copy(n.position);
-    const spin = new THREE.Group(), c = n.clone(true); c.position.set(0, 0, 0); fix(c, true); spin.add(c); pivot.add(spin); tilt.add(pivot);
+    const spin = new THREE.Group(), c = n.clone(true); c.position.set(0, 0, 0); fix(c, shadow); spin.add(c); pivot.add(spin); tilt.add(pivot);
     wheels.push({ pivot, spin, front: q[0] === "f", r: w.r }); rs += w.r;
   }
   if (!t.hasTail) {

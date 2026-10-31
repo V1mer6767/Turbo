@@ -16,7 +16,7 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(SK) || "{}")); } catch (e
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
 const QUAL = {
   low: { pr: 1, shadow: 0, trees: 450, terrainCell: 10, treeShadow: false },
-  mid: { pr: 1.3, shadow: 1024, trees: 1000, terrainCell: 8, treeShadow: false },
+  mid: { pr: 1.15, shadow: 1024, trees: 1000, terrainCell: 8, treeShadow: false },
   high: { pr: 2, shadow: 2048, trees: 1700, terrainCell: 6, treeShadow: true }
 };
 const qual = () => QUAL[S.quality] || QUAL.mid;
@@ -62,13 +62,28 @@ const track = () => TRACK_DEFS[curTrack];
 
 /* ---------------- керування ---------------- */
 const btn = { left: 0, right: 0, gas: 0, brake: 0, drift: 0, nitro: 0 }, keys = {};
-$$("#ctl [data-k]").forEach(el => {
+const ctlEls = $$("#ctl [data-k]");
+ctlEls.forEach(el => {
   const k = el.dataset.k;
-  el.addEventListener("pointerdown", e => { e.preventDefault(); A.audioInit(); btn[k] = 1; el.classList.add("on"); try { el.setPointerCapture(e.pointerId); } catch (_) {} });
-  const up = () => { btn[k] = 0; el.classList.remove("on"); };
-  el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up); el.addEventListener("lostpointercapture", up);
+  el.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") return; A.audioInit(); btn[k] = 1; el.classList.add("on"); try { el.setPointerCapture(e.pointerId); } catch (_) {} });
+  const up = e => { if (e.pointerType !== "mouse") return; btn[k] = 0; el.classList.remove("on"); };
+  el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
   el.addEventListener("contextmenu", e => e.preventDefault());
 });
+/* дотики: стан кнопок завжди перераховується зі списку всіх активних дотиків — не залипає і не губиться */
+function touchCtl(e) {
+  const ctl = $("#ctl"); if (ctl.hidden) return;
+  const pad = 14, on = {};
+  for (const t of e.touches) for (const el of ctlEls) {
+    const r = el.getBoundingClientRect();
+    if (t.clientX >= r.left - pad && t.clientX <= r.right + pad && t.clientY >= r.top - pad && t.clientY <= r.bottom + pad) on[el.dataset.k] = 1;
+  }
+  let any = false;
+  for (const el of ctlEls) { const k = el.dataset.k, v = on[k] ? 1 : 0; if (btn[k] !== v) { btn[k] = v; el.classList.toggle("on", !!v); } if (v) any = true; }
+  if (any) A.audioInit();
+}
+["touchstart", "touchmove", "touchend", "touchcancel"].forEach(n => addEventListener(n, touchCtl, { passive: true, capture: true }));
+addEventListener("blur", () => { for (const el of ctlEls) { btn[el.dataset.k] = 0; el.classList.remove("on"); } });
 addEventListener("keydown", e => {
   keys[e.code] = 1; A.audioInit();
   if (e.code === "Escape" || e.code === "KeyP") togglePause();
@@ -251,7 +266,7 @@ function skidSeg(x0, y0, z0, x1, y1, z1) {
 
 /* ---------------- машини ---------------- */
 function addModel(c, th, light) {
-  const m = createCarModel(c.spec, c.color, th.env); c.model = m; scene.add(m.root);
+  const m = createCarModel(c.spec, c.color, th.env, c === player); c.model = m; scene.add(m.root);
   if (light) { const sp = new THREE.SpotLight(0xfff0d0, 700, 120, .5, .6, 1.4); sp.position.set(c.spec.L / 2, .8, 0); sp.target.position.set(40, -.5, 0); m.tilt.add(sp, sp.target); }
 }
 function gridPos(k) { return { idx: -(3 + Math.floor(k / 2) * 2), lat: (k % 2 ? 1 : -1) * 3.1 }; }
@@ -290,7 +305,7 @@ async function startRace(ti) {
   if (ti !== curTrack) await loadTrack(ti);
   state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Завантаження машин…"; await new Promise(r => setTimeout(r, 30));
   await Promise.all(CARS.slice(0, CARS.findIndex(x => x.id === S.car) + 1).map(c => ensureCar(c.id)));
-  laps = S.laps; spawn("race"); raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
+  laps = S.laps; spawn("race"); try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {} raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true; state = "count";
   document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   snapCamera(); applySize();
@@ -321,6 +336,7 @@ function order() {
 }
 let ordCache = [];
 function physStep(dt) {
+  for (const c of cars) { const q = c._p || (c._p = {}); q.x = c.x; q.y = c.y; q.z = c.z; q.a = c.a; q.pitch = c.pitch; q.roll = c.roll; }
   const racing = state === "race" || state === "finish" || state === "menu";
   const pin = playerInput();
   for (const c of cars) {
@@ -533,13 +549,29 @@ function simulate(dt) {
     if (player.vf > 6 && Math.abs(angDiff(player.a, tg)) > 2.1) { wrongT += dt; if (wrongT > 1.2) { banner("Не туди! Розвернись", 1000); wrongT = .6; } } else wrongT = 0;
   }
 }
+const TAU = Math.PI * 2;
+function applyInterp(al) {
+  al = clamp(al, 0, 1);
+  for (const c of cars) {
+    const q = c._p; if (!q) continue;
+    c._r = { x: c.x, y: c.y, z: c.z, a: c.a, pitch: c.pitch, roll: c.roll };
+    c.x = q.x + (c.x - q.x) * al; c.y = q.y + (c.y - q.y) * al; c.z = q.z + (c.z - q.z) * al;
+    const d = ((c._r.a - q.a + Math.PI) % TAU + TAU) % TAU - Math.PI; c.a = q.a + d * al;
+    c.pitch = q.pitch + (c.pitch - q.pitch) * al; c.roll = q.roll + (c.roll - q.roll) * al;
+  }
+}
+function restoreInterp() { for (const c of cars) { const r = c._r; if (r) { c.x = r.x; c.y = r.y; c.z = r.z; c.a = r.a; c.pitch = r.pitch; c.roll = r.roll; c._r = null; } } }
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (!W) { return; }
   if (state === "garage") garageT += dt;
   simulate(dt);
-  if (cars.length && state !== "paused") { syncAll(dt); effects(dt); }
+  let interp = false;
+  if (cars.length && state !== "paused") {
+    syncAll(dt); effects(dt);
+    if (state === "race" || state === "count" || state === "finish" || state === "menu") { applyInterp(acc / STEP); interp = true; syncAll(0); }
+  }
   if (state === "menu") { /* демо-заїзд */ }
   updateCamera(dt);
   if (W && player && T) { /* сонце і тіні слідують за гравцем */
@@ -552,9 +584,10 @@ function frame(now) {
   if (player && (state === "race" || state === "count" || state === "finish")) hud(dt);
   A.audioFrame(player, state === "race" || state === "finish" ? true : (state === "count" ? "idle" : false));
   renderer.render(scene, camera);
+  if (interp) restoreInterp();
   // динамічна роздільність
   if (state === "race") {
-    fpsAcc += dt; fpsN++; if (fpsN >= 90) { const avg = fpsAcc / fpsN; fpsAcc = fpsN = 0; if (fpsCool > 0) fpsCool--; else if (avg > 1 / 36 && prScale > .55) { prScale *= .85; applySize(); fpsCool = 2; } }
+    fpsAcc += dt; fpsN++; if (fpsN >= 40) { const avg = fpsAcc / fpsN; fpsAcc = fpsN = 0; if (fpsCool > 0) fpsCool--; else if (avg > 1 / 48 && prScale > .5) { prScale *= .85; applySize(); fpsCool = 2; } }
   }
 }
 
