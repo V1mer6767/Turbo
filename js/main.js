@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 7;
+const BUILD = 8;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -295,9 +295,9 @@ function addModel(c, th, light) {
   m.glows = [];
   const L = c.spec.L, Wd = c.spec.W, hy = (m.fm && m.fm.tailY) || .8;
   for (const sd of [-1, 1]) {
-    const gm = new THREE.SpriteMaterial({ map: glowTex, color: 0xff2a1a, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: .35 });
-    const sp = new THREE.Sprite(gm); sp.scale.set(1.5, 1.1, 1); sp.position.set(-L / 2 - .08, .82, sd * Wd * .34); m.tilt.add(sp); m.glows.push(sp);
-    if (th.lamps) { const hm = new THREE.SpriteMaterial({ map: glowTex, color: 0xfff1cf, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: .5 }); const hp = new THREE.Sprite(hm); hp.scale.set(1.3, .9, 1); hp.position.set(L / 2 + .1, .72, sd * Wd * .32); m.tilt.add(hp); }
+    const gm = new THREE.SpriteMaterial({ map: glowTex, color: 0xff2a1a, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: false, opacity: .3, fog: false });
+    const sp = new THREE.Sprite(gm); sp.renderOrder = 5; sp.scale.set(.9, .6, 1); sp.position.set(-L / 2 - .08, .82, sd * Wd * .34); m.tilt.add(sp); m.glows.push(sp);
+    if (th.lamps) { const hm = new THREE.SpriteMaterial({ map: glowTex, color: 0xfff1cf, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: false, opacity: .5, fog: false }); const hp = new THREE.Sprite(hm); hp.scale.set(1.1, .8, 1); hp.renderOrder = 5; m.headG = m.headG || []; m.headG.push(hp); hp.position.set(L / 2 + .1, .72, sd * Wd * .32); m.tilt.add(hp); }
   }
   if (light) { const sp = new THREE.SpotLight(0xfff0d0, 700, 120, .5, .6, 1.4); sp.position.set(c.spec.L / 2, .8, 0); sp.target.position.set(40, -.5, 0); m.tilt.add(sp, sp.target); }
 }
@@ -330,7 +330,8 @@ function spawn(mode) {
   if (mode === "demo") cars.forEach((c, i) => { const j = Math.round(i * T.M / 6); c.place(T, j, rnd(-2, 2), W.H); c.pi = c.idx; c.vx = Math.cos(c.a) * 25; c.vz = Math.sin(c.a) * 25; c.vf = 25; });
   syncAll(0.016);
 }
-function syncAll(dt) { for (const c of cars) { syncModel(c, c.model, dt); } if (player) player.model.root.visible = camMode !== 1; }
+function syncAll(dt) {
+  if (player && player.model.glows && camera) { const fx = Math.cos(player.a), fz = Math.sin(player.a), front = (camera.position.x - player.x) * fx + (camera.position.z - player.z) * fz > 0 || camMode === 1; for (const g of player.model.glows) g.visible = !front; if (player.model.headG) for (const g of player.model.headG) g.visible = front && camMode !== 1; } for (const c of cars) { syncModel(c, c.model, dt); } if (player) player.model.root.visible = camMode !== 1; }
 
 /* ---------------- вільний режим (дрифт) ---------------- */
 const dr = { cur: 0, t: 0, idle: 0, mult: 1, session: 0, earned: 0, hit: 0 };
@@ -462,7 +463,38 @@ function snapCamera() {
   camPos.set(player.x - Math.cos(camYaw) * b, player.y + 2.6, player.z - Math.sin(camYaw) * b);
   camera.position.copy(camPos); camLook.set(player.x, player.y + 1.2, player.z); camera.lookAt(camLook);
 }
-function cycleCam() { camMode = (camMode + 1) % 3; if (player) player.model.root.visible = camMode !== 1; }
+function cycleCam() {
+  camMode = (camMode + 1) % 4; if (player) player.model.root.visible = camMode !== 1;
+  if (camMode === 3 && player) { orbA = player.a + Math.PI; orbP = .35; orbSnap = true; banner("Огляд 360°: крути пальцем екран, двома пальцями — наближення", 2600); }
+  lookYaw = lookPitch = 0;
+}
+/* вільний огляд: перетягуй пальцем по екрану (поза кнопками) */
+let lookYaw = 0, lookPitch = 0, lookRel = 0, orbA = 0, orbP = .35, orbD = 9, orbSnap = false;
+const lk = { id: null, x: 0, y: 0, pd: 0 };
+const inGameState = () => state === "race" || state === "count" || state === "free" || state === "finish";
+function dragLook(dx, dy) {
+  if (document.body.classList.contains("rot")) { const t = dx; dx = dy; dy = -t; }
+  if (camMode === 3) { orbA -= dx * .0065; orbP = clamp(orbP + dy * .005, -.02, 1.4); }
+  else { lookYaw -= dx * .0065; lookPitch = clamp(lookPitch + dy * .005, -.1, 1.2); }
+}
+function tdist(e) { const a = e.touches[0], b = e.touches[1]; return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+canvas.addEventListener("touchstart", e => {
+  if (!inGameState()) return;
+  if (e.touches.length >= 2 && camMode === 3) { lk.pd = tdist(e); return; }
+  if (lk.id === null) { const t = e.changedTouches[0]; lk.id = t.identifier; lk.x = t.clientX; lk.y = t.clientY; lookRel = 1e9; }
+}, { passive: true });
+canvas.addEventListener("touchmove", e => {
+  if (!inGameState()) return;
+  if (e.touches.length >= 2 && camMode === 3 && lk.pd) { const d = tdist(e); orbD = clamp(orbD * lk.pd / Math.max(d, 20), 4.5, 24); lk.pd = d; return; }
+  for (const t of e.changedTouches) if (t.identifier === lk.id) { dragLook(t.clientX - lk.x, t.clientY - lk.y); lk.x = t.clientX; lk.y = t.clientY; }
+}, { passive: true });
+const lkEnd = e => { for (const t of e.changedTouches) if (t.identifier === lk.id) { lk.id = null; lookRel = performance.now(); } if (e.touches.length < 2) lk.pd = 0; };
+canvas.addEventListener("touchend", lkEnd, { passive: true }); canvas.addEventListener("touchcancel", lkEnd, { passive: true });
+let mdrag = false;
+canvas.addEventListener("pointerdown", e => { if (e.pointerType === "mouse" && inGameState()) { mdrag = true; lk.x = e.clientX; lk.y = e.clientY; lookRel = 1e9; } });
+addEventListener("pointermove", e => { if (mdrag && e.pointerType === "mouse") { dragLook(e.clientX - lk.x, e.clientY - lk.y); lk.x = e.clientX; lk.y = e.clientY; } });
+addEventListener("pointerup", e => { if (mdrag) { mdrag = false; lookRel = performance.now(); } });
+canvas.addEventListener("wheel", e => { if (camMode === 3) orbD = clamp(orbD + e.deltaY * .01, 4.5, 24); }, { passive: true });
 function onTap(el, fn) { let t = 0; const go = e => { const n = performance.now(); if (n - t < 350) return; t = n; fn(e); }; el.addEventListener("pointerup", go); el.addEventListener("click", go); }
 onTap($("#bCam"), cycleCam);
 function updateCamera(dt) {
@@ -476,7 +508,13 @@ function updateCamera(dt) {
   }
   const p = player; if (!p) return;
   const sp = p.speed, boost = p.boostT > 0;
-  if (camMode === 1) {
+  if (camMode === 3) {
+    if (orbSnap) { orbSnap = false; camPos.set(p.x + Math.cos(orbA) * orbD, p.y + 3, p.z + Math.sin(orbA) * orbD); }
+    const cp = Math.cos(orbP), dx = p.x + Math.cos(orbA) * cp * orbD, dz = p.z + Math.sin(orbA) * cp * orbD, dy = Math.max(p.y + .5 + Math.sin(orbP) * orbD, .5);
+    const k = 1 - Math.exp(-dt * 14); camPos.x += (dx - camPos.x) * k; camPos.y += (dy - camPos.y) * k; camPos.z += (dz - camPos.z) * k;
+    camera.position.copy(camPos); camLook.set(p.x, p.y + .8, p.z); camera.lookAt(camLook);
+    camFov = lerp(camFov, 52, Math.min(1, dt * 5));
+  } else if (camMode === 1) {
     const fx = Math.cos(p.a), fz = Math.sin(p.a);
     camera.position.set(p.x + fx * (p.spec.L / 2 - .1), p.y + .78 + Math.abs(Math.sin(t * 40)) * .005 * sp / 60, p.z + fz * (p.spec.L / 2 - .1));
     camera.rotation.order = "YXZ"; camera.rotation.set(-p.pitch * .6, -p.a - Math.PI / 2, -p.roll * .5);
@@ -484,14 +522,16 @@ function updateCamera(dt) {
   } else {
     let dirA = p.a; if (sp > 7) { const va = Math.atan2(p.vz, p.vx); dirA = p.a + angDiff(p.a, va) * .35; }
     camYaw += angDiff(camYaw, dirA) * Math.min(1, dt * 4.2);
-    const back = (camMode === 2 ? 11 : 7.4) + sp * .02, up = (camMode === 2 ? 3.8 : 2.45) + sp * .005;
-    const cx = Math.cos(camYaw), cz = Math.sin(camYaw);
+    if (lk.id === null && !mdrag && performance.now() - lookRel > 1500) { const d = Math.exp(-dt * 3); lookYaw *= d; lookPitch *= d; }
+    const back0 = (camMode === 2 ? 11 : 7.4) + sp * .02, up0 = (camMode === 2 ? 3.8 : 2.45) + sp * .005, ly = camYaw + lookYaw, cpL = Math.cos(lookPitch);
+    const back = back0 * cpL, up = up0 + Math.sin(lookPitch) * back0;
+    const cx = Math.cos(ly), cz = Math.sin(ly), lam = Math.max(0, 1 - Math.hypot(lookYaw, lookPitch) * 1.6);
     const dx = p.x - cx * back, dz = p.z - cz * back, dy = Math.max(p.y + up, W.H(dx, dz, p.idx) + 1);
     const k = 1 - Math.exp(-dt * 11);
     camPos.x += (dx - camPos.x) * k; camPos.y += (dy - camPos.y) * k; camPos.z += (dz - camPos.z) * k;
     camera.position.copy(camPos);
     if (camShake > 0) { camera.position.x += (Math.random() - .5) * camShake; camera.position.y += (Math.random() - .5) * camShake; camShake = Math.max(0, camShake - dt * 2.4); }
-    camLook.set(p.x + cx * 6, p.y + 1.15, p.z + cz * 6); camera.lookAt(camLook);
+    camLook.set(p.x + Math.cos(camYaw) * 6 * lam, p.y + 1.15, p.z + Math.sin(camYaw) * 6 * lam); camera.lookAt(camLook);
     camFov = lerp(camFov, 60 + sp * .28 + (boost ? 9 : 0), Math.min(1, dt * 5));
   }
   if (Math.abs(camera.fov - camFov) > .05) { camera.fov = camFov; camera.updateProjectionMatrix(); partMat && (partMat.uniforms.uK.value = renderer.domElement.height / (2 * Math.tan(camFov * Math.PI / 360))); }
@@ -709,7 +749,7 @@ boot().then(async () => { for (const id of Object.keys(MODEL_FILE)) await ensure
 
 /* ---- налагодження/тест ---- */
 window.__g = {
-  get state() { return state; }, get player() { return player; }, get cars() { return cars; }, get T() { return T; },
+  get state() { return state; }, get player() { return player; }, get cars() { return cars; }, get T() { return T; }, get scene() { return scene; },
   advance(sec) { const n = Math.round(sec / STEP); for (let i = 0; i < n; i++) { if (state === "count") { countT -= STEP; if (countT <= 1) { state = "race"; raceT = 0; } } physStep(STEP); if (i % 30 === 0) rubber(); if (state === "finish") { finishTimer -= STEP; if (finishTimer <= 0) { showResults(); break; } } } syncAll(.016); },
   setBot(v) { bot = v; }, snap() { snapCamera(); camera.fov = camFov = 60; camera.updateProjectionMatrix(); }, startRace, startFree, loadTrack, setCam(m) { camMode = m; }, get raceT() { return raceT; }, enterGarage, place: () => racePlace(player)
 };
