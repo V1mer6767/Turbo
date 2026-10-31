@@ -3,8 +3,9 @@ import { TRACK_DEFS, nearest, clamp, lerp, angDiff } from "./trackmath.js";
 import { buildWorld, makeSky } from "./world.js";
 import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide } from "./car.js";
 import * as A from "./audio.js";
+import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 1;
+const BUILD = 2;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -266,7 +267,7 @@ function spawn(mode) {
       const sp = CARS.find(x => x.id === S.car) || CARS[0];
       c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
-      const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : CARS, base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
+      const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : (CARS.filter(x => hasCar(x.id)).length ? CARS.filter(x => hasCar(x.id)) : CARS), base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
       const sp = { ...base, vmax: vm, acc: 8.5 + def.diff * 1.8 + (mul - 1) * 8, mu: 1.3 + def.diff * .06, brake: 12.5 };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
       c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.93, 1), lane: rnd(-3, 3), surf });
@@ -287,7 +288,8 @@ function syncAll(dt) { for (const c of cars) { syncModel(c, c.model, dt); } if (
 async function startRace(ti) {
   A.audioInit();
   if (ti !== curTrack) await loadTrack(ti);
-  state = "loading"; show("sLoad"); await new Promise(r => setTimeout(r, 30));
+  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Завантаження машин…"; await new Promise(r => setTimeout(r, 30));
+  await Promise.all(CARS.slice(0, CARS.findIndex(x => x.id === S.car) + 1).map(c => ensureCar(c.id)));
   laps = S.laps; spawn("race"); raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true; state = "count";
   document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
@@ -455,8 +457,13 @@ function leaveGarage() { if (prevModel) { scene.remove(prevModel.root); prevMode
 function garageModel() {
   if (prevModel) scene.remove(prevModel.root);
   const sp = CARS.find(x => x.id === gSel);
-  prevModel = createCarModel(sp, S.colors[sp.id] || sp.color, W.th.env); scene.add(prevModel.root);
-  const k = 14, x = T.x[k], z = T.z[k], y = T.h[k]; prevModel.root.position.set(x, y, z); prevModel.root.rotation.y = -Math.atan2(T.tz[k], T.tx[k]);
+  const mk = () => {
+    if (prevModel) scene.remove(prevModel.root);
+    prevModel = createCarModel(sp, S.colors[sp.id] || sp.color, W.th.env); scene.add(prevModel.root);
+    const k = 14, x = T.x[k], z = T.z[k], y = T.h[k]; prevModel.root.position.set(x, y, z); prevModel.root.rotation.y = -Math.atan2(T.tz[k], T.tx[k]);
+  };
+  if (hasCar(sp.id) || !MODEL_FILE[sp.id]) mk();
+  else { if (prevModel) prevModel.root.visible = false; ensureCar(sp.id).then(() => { if (gSel === sp.id && state === "garage") mk(); }); }
 }
 function garageUI() {
   const sp = CARS.find(x => x.id === gSel), owned = S.owned.includes(sp.id);
@@ -466,7 +473,7 @@ function garageUI() {
   const bar = (n, v) => `<div class="stat"><b>${n}</b><div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div></div>`;
   $("#gStats").innerHTML = bar("Швидкість", (sp.vmax - 40) / 50) + bar("Розгін", (sp.acc - 6) / 11) + bar("Зчеплення", (sp.mu - .8) / .6);
   const sw = $("#swatches"); sw.innerHTML = "";
-  if (owned) COLORS.forEach(c => { const b = document.createElement("button"); b.className = "sw" + ((S.colors[sp.id] || sp.color) === c ? " on" : ""); b.style.background = c; b.onclick = () => { S.colors[sp.id] = c; save(); setCarColor(prevModel, c); garageUI(); }; sw.appendChild(b); });
+  if (owned) COLORS.forEach(c => { const b = document.createElement("button"); b.className = "sw" + ((S.colors[sp.id] || sp.color) === c ? " on" : ""); b.style.background = c; b.onclick = () => { S.colors[sp.id] = c; save(); if (prevModel) setCarColor(prevModel, c); garageUI(); }; sw.appendChild(b); });
   const act = $("#gAct");
   if (owned) { act.textContent = S.car === sp.id ? "Обрана ✓" : "Обрати"; act.disabled = S.car === sp.id; }
   else { act.textContent = "Купити за 🪙 " + sp.price; act.disabled = S.coins < sp.price; }
@@ -556,9 +563,10 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && sta
 async function boot() {
   applySize(); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   if (S.tilt) enableTilt();
-  $("#ver").textContent = "Збірка " + BUILD;
+  $("#ver").textContent = "Збірка " + BUILD + " · моделі машин: RES1N, Ddiaz Design, Galaxy Car Showroom (CC BY 4.0)";
   A.setSound(S.sound);
   await loadTrack(clamp(S.last | 0, 0, TRACK_DEFS.length - 1));
+  $("#loadTxt").textContent = "Завантаження машин…"; await ensureCar(S.car);
   spawn("demo"); state = "menu"; updCoins(); show("sMain");
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     const had = !!navigator.serviceWorker.controller;
@@ -567,7 +575,7 @@ async function boot() {
   }
 }
 requestAnimationFrame(frame);
-boot();
+boot().then(async () => { for (const id of Object.keys(MODEL_FILE)) await ensureCar(id); });
 
 /* ---- налагодження/тест ---- */
 window.__g = {

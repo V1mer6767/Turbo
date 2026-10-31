@@ -1,11 +1,13 @@
 import * as THREE from "../vendor/three.module.min.js";
+import { hasCar, buildGLB } from "./models.js";
 import { nearest, clamp, lerp, angDiff } from "./trackmath.js";
 
 export const CARS = [
-  { id: "city", name: "Сіті", kind: "hatch", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.4, steer: 1, L: 4.0, W: 1.78, roof: 1.52, color: "#3b82f6", snd: 1.0, desc: "Надійний старт" },
-  { id: "sport", name: "Спорт", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.55, steer: 1, L: 4.4, W: 1.84, roof: 1.3, color: "#ef4444", snd: 1.15, desc: "Швидкий і слухняний" },
-  { id: "muscle", name: "Мускул", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.42, steer: 1, L: 4.9, W: 1.94, roof: 1.36, color: "#f59e0b", snd: .72, desc: "Потужний, любить зноси" },
-  { id: "hyper", name: "Гіпер", kind: "hyper", price: 3200, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.6, W: 2.02, roof: 1.12, color: "#a855f7", snd: 1.3, desc: "Король траси" }
+  { id: "city", name: "Сіті", kind: "sedan", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.4, steer: 1, L: 4.99, W: 1.95, roof: 1.45, color: "#3b82f6", snd: 1.0, desc: "Надійний старт" },
+  { id: "sport", name: "Спорт", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.55, steer: 1, L: 4.8, W: 1.9, roof: 1.39, color: "#ef4444", snd: 1.15, desc: "Швидкий і слухняний" },
+  { id: "muscle", name: "Мускул", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.42, steer: 1, L: 4.53, W: 1.95, roof: 1.2, color: "#f59e0b", snd: .72, desc: "Потужний, любить зноси" },
+  { id: "gt", name: "ГТ", kind: "gt", price: 2400, vmax: 76, acc: 14, brake: 14, mu: 1.62, steer: 1, L: 4.66, W: 1.97, roof: 1.28, color: "#dc2626", snd: 1.05, desc: "V12, дальнобійний" },
+  { id: "hyper", name: "Гіпер", kind: "hyper", price: 3800, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.57, W: 1.97, roof: 1.2, color: "#a855f7", snd: 1.3, desc: "Король траси" }
 ];
 export const COLORS = ["#3b82f6", "#ef4444", "#f59e0b", "#22c55e", "#a855f7", "#f4f4f5", "#111827", "#14b8a6", "#ec4899"];
 const WB = 2.7;
@@ -18,6 +20,7 @@ function extrude(pts, depth, bevel) {
 }
 
 export function createCarModel(spec, color, envI = 1) {
+  if (hasCar(spec.id)) return buildGLB(spec, color, envI);
   const L = spec.L, Wd = spec.W, roof = spec.roof, k = spec.kind;
   const root = new THREE.Group(); root.rotation.order = "YZX";
   const tilt = new THREE.Group(); tilt.rotation.order = "ZXY"; root.add(tilt);
