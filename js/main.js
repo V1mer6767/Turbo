@@ -28,14 +28,28 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(62, 1, .3, 5200);
 const pmrem = new THREE.PMREMGenerator(renderer);
 let prScale = 1;
+const coarse = matchMedia("(pointer:coarse)").matches;
 function applySize() {
+  const rot = innerHeight > innerWidth && coarse, bs = document.body.style;
+  document.body.classList.toggle("rot", rot);
+  const w = rot ? innerHeight : innerWidth, h = rot ? innerWidth : innerHeight;
+  if (rot) { bs.width = w + "px"; bs.height = h + "px"; bs.transform = `translateX(${innerWidth}px) rotate(90deg)`; } else { bs.width = bs.height = bs.transform = ""; }
   const pr = Math.min(devicePixelRatio || 1, qual().pr) * prScale;
-  renderer.setPixelRatio(pr); renderer.setSize(innerWidth, innerHeight, false);
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setPixelRatio(pr); renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
   if (partMat) partMat.uniforms.uK.value = renderer.domElement.height / (2 * Math.tan(camera.fov * Math.PI / 360));
-  $("#rotate").hidden = innerWidth >= innerHeight;
 }
-addEventListener("resize", applySize);
+addEventListener("resize", applySize); addEventListener("orientationchange", () => setTimeout(applySize, 120));
+/* на телефоні: на весь екран і горизонтально; без виділення тексту */
+let fsTried = false;
+addEventListener("pointerdown", () => {
+  if (fsTried || !coarse) return; fsTried = true;
+  const el = document.documentElement;
+  if (el.requestFullscreen) el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {});
+}, { once: false });
+for (const ev of ["selectstart", "contextmenu", "dragstart", "gesturestart", "copy", "cut"]) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+document.addEventListener("touchstart", e => { if (e.target.closest && e.target.closest("#ctl,#hud,#gl")) e.preventDefault(); }, { passive: false });
+document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target.closest(".cards,.setList,.resList")) e.preventDefault(); }, { passive: false });
 
 /* ---------------- стан ---------------- */
 let W = null, T = null, scene = null, curTrack = -1, envRT = null;
