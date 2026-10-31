@@ -58,7 +58,7 @@ body.tilt .steer{display:none}
 .btn.main{background:linear-gradient(180deg,#ff5252,#d92b2b);border-color:#ff8a8a;box-shadow:0 6px 24px rgba(255,61,61,.35)}
 .btn:active{transform:scale(.97)}
 .btn[disabled]{opacity:.45}
-.ver{position:absolute;bottom:max(10px,env(safe-area-inset-bottom));font-size:11px;color:var(--dim)}
+.ver{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));font-size:12px;font-weight:700;color:var(--dim);opacity:.8}
 .head{position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:10px}
 .head h2{margin:0;font-size:22px;font-style:italic}
 .back{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);font-size:28px;line-height:1;touch-action:manipulation}
@@ -103,7 +103,7 @@ body.rot #hPos{left:80px}
 body.rot #hLap{left:82px}
 body.rot .steer[data-k=left]{left:80px}
 body.rot .steer[data-k=right]{left:186px}
-body.rot .ver{left:80px}
+body.rot .ver{left:80px;top:16px}
 
 #hDrift{position:absolute;left:50%;transform:translateX(-50%);top:max(10px,env(safe-area-inset-top));text-align:center;display:none;min-width:200px;background:rgba(0,0,0,.38);padding:4px 16px 6px;border-radius:14px;line-height:1.05}
 body.free #hDrift{display:block}

@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 9;
+const BUILD = 10;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -738,7 +738,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && (st
 async function boot() {
   applySize(); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   if (S.tilt) enableTilt();
-  $("#ver").textContent = "Збірка " + BUILD + " · моделі машин: RES1N, Ddiaz Design, Galaxy Car Showroom (CC BY 4.0)";
+  $("#ver").textContent = "v" + BUILD;
   A.setSound(S.sound);
   await loadTrack(clamp(S.last | 0, 0, TRACK_DEFS.length - 1));
   $("#loadTxt").textContent = "Завантаження машин…"; await ensureCar(S.car);
