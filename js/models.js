@@ -11,12 +11,14 @@ function prepare(g) {
   g.scene.traverse(o => { if (o.isMesh) { const ms = Array.isArray(o.material) ? o.material : [o.material]; for (const m of ms) { if (m.name === "tail") hasTail = true; if (m.name === "glass") { m.depthWrite = false; m.transparent = true; } } } });
   return { scene: g.scene, meta, hasTail };
 }
+// лобове/бокове скло в салоні: прозоре, без "мутного" затемнення
+function clearGlass(m) { m.alphaTest = 0; m.transparent = true; m.opacity = .08; m.depthWrite = false; m.transmission = 0; m.roughness = .02; if (m.color) m.color.setRGB(.02, .03, .04); if ("clearcoat" in m) m.clearcoat = 0; m.name = "glass_i"; m.needsUpdate = true; }
 export function hasCar(id) { return !!tpl[id]; }
 export function ensureCar(id) {
   if (tpl[id]) return Promise.resolve(true);
   if (!MODEL_FILE[id]) return Promise.resolve(false);
   return pend[id] || (pend[id] = new Promise(res => {
-    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + "_i3.glb", g => { g.scene.traverse(o => { if (o.isMesh) o.frustumCulled = true; }); r(g.scene); }, undefined, () => r(null)));
+    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + "_i3.glb", g => { g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = true; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (/glass|glas|window|wind/i.test(m.name)) clearGlass(m); } }); r(g.scene); }, undefined, () => r(null)));
     loader.load("models/" + MODEL_FILE[id] + ".glb", g => { intP.then(is => { try { tpl[id] = prepare(g); tpl[id].int = is; res(true); } catch (e) { console.warn(e); res(false); } }); }, undefined, e => { console.warn("model", id, e); pend[id] = null; res(false); });
   }));
 }
@@ -32,7 +34,7 @@ export function buildGLB(spec, color, envI, shadow = true) {
     const swap = m => { if (m.name === "paint") return paint; if (m.name === "tail") return tail; m.envMapIntensity = envI; return m; };
     c.material = Array.isArray(c.material) ? c.material.map(swap) : swap(c.material);
     c.castShadow = shadow && !(c.material.transparent); c.receiveShadow = false;
-    if (c.material.name === "glass") c.renderOrder = 2;
+    if (c.material.name === "glass" || c.material.name === "glass_i") c.renderOrder = 2;
   });
   let steerObj = null, steerAx = null;
   const body = t.scene.getObjectByName("body").clone(true); fix(body, shadow); tilt.add(body);
