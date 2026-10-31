@@ -10,7 +10,7 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 
 /* ---------------- збереження ---------------- */
 const SK = "turbo_v1";
-let S = { coins: 0, owned: ["city"], car: "city", colors: {}, best: {}, bestLap: {}, sound: true, auto: true, quality: "mid", diff: 1, laps: 3, last: 0, tilt: false, tiltInv: /iPhone|iPad|iPod/.test(navigator.userAgent) };
+let S = { coins: 0, owned: ["city"], car: "city", colors: {}, best: {}, bestLap: {}, sound: true, auto: true, quality: "mid", diff: 1, laps: 3, assist: true, last: 0, tilt: false, tiltInv: /iPhone|iPad|iPod/.test(navigator.userAgent) };
 try { Object.assign(S, JSON.parse(localStorage.getItem(SK) || "{}")); } catch (e) {}
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
 const QUAL = {
@@ -79,7 +79,7 @@ function playerInput() {
   if (S.tilt && tiltOn) { const v = Math.abs(tiltV) < .05 ? 0 : tiltV; steer = clamp(v / .6, -1, 1); if (L || R) steer = (R ? 1 : 0) - (L ? 1 : 0); }
   const brake = !!(btn.brake || keys.ArrowDown || keys.KeyS);
   const gas = S.auto ? !brake : !!(btn.gas || keys.ArrowUp || keys.KeyW);
-  return { steer, gas: gas || !!(keys.ArrowUp || keys.KeyW), brake, drift: !!(btn.drift || keys.Space), nitro: !!(btn.nitro || keys.ShiftLeft || keys.ShiftRight) };
+  return { steer, gas: gas || !!(keys.ArrowUp || keys.KeyW), brake, assist: S.assist, drift: !!(btn.drift || keys.Space), nitro: !!(btn.nitro || keys.ShiftLeft || keys.ShiftRight) };
 }
 
 /* ---------------- екрани ---------------- */
@@ -124,6 +124,7 @@ function buildSettings() {
     ["Суперники", "Швидкість водіїв", "diff", [[.92, "Легко"], [1, "Норма"], [1.07, "Складно"]]],
     ["Кіл у гонці", "", "laps", [[2, "2"], [3, "3"], [5, "5"]]],
     ["Газ", "Авто — просто кермуй і гальмуй", "auto", [[true, "Авто"], [false, "Кнопка"]]],
+    ["Допомога в поворотах", "Сама збавляє швидкість при крутому керуванні", "assist", [[true, "Так"], [false, "Ні"]]],
     ["Звук", "", "sound", [[true, "Увімк"], [false, "Вимк"]]],
     ["Кермо нахилом", "Експериментально: нахиляй телефон", "tilt", [[false, "Ні"], [true, "Так"]]],
     ["Інвертувати нахил", "Якщо повертає в інший бік", "tiltInv", [[false, "Ні"], [true, "Так"]]]
@@ -253,7 +254,7 @@ function spawn(mode) {
       c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
       const base = CARS[(Math.random() * CARS.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
-      const sp = { ...base, vmax: vm, acc: 8.5 + def.diff * 1.8 + (mul - 1) * 8, mu: 1.0 + def.diff * .05, brake: 12.5 };
+      const sp = { ...base, vmax: vm, acc: 8.5 + def.diff * 1.8 + (mul - 1) * 8, mu: 1.3 + def.diff * .06, brake: 12.5 };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
       c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.93, 1), lane: rnd(-3, 3), surf });
       c.skillBase = c.skill;
@@ -311,7 +312,7 @@ function physStep(dt) {
     let inp;
     if (c === player && !c.finished && !bot) inp = pin;
     else inp = aiInput(c, T, cars, dt, racing);
-    if (c === player && !racing) inp = { steer: 0, gas: false, brake: true };
+    if (c === player && !racing) inp = { hold: true };
     c.thr = inp.gas;
     stepCar(c, inp, dt, T, W.H);
   }

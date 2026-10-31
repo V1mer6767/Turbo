@@ -2,10 +2,10 @@ import * as THREE from "../vendor/three.module.min.js";
 import { nearest, clamp, lerp, angDiff } from "./trackmath.js";
 
 export const CARS = [
-  { id: "city", name: "Сіті", kind: "hatch", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.0, steer: 1, L: 4.0, W: 1.78, roof: 1.52, color: "#3b82f6", snd: 1.0, desc: "Надійний старт" },
-  { id: "sport", name: "Спорт", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.1, steer: 1, L: 4.4, W: 1.84, roof: 1.3, color: "#ef4444", snd: 1.15, desc: "Швидкий і слухняний" },
-  { id: "muscle", name: "Мускул", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.0, steer: 1, L: 4.9, W: 1.94, roof: 1.36, color: "#f59e0b", snd: .72, desc: "Потужний, любить зноси" },
-  { id: "hyper", name: "Гіпер", kind: "hyper", price: 3200, vmax: 82, acc: 15.5, brake: 15, mu: 1.28, steer: 1.05, L: 4.6, W: 2.02, roof: 1.12, color: "#a855f7", snd: 1.3, desc: "Король траси" }
+  { id: "city", name: "Сіті", kind: "hatch", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.4, steer: 1, L: 4.0, W: 1.78, roof: 1.52, color: "#3b82f6", snd: 1.0, desc: "Надійний старт" },
+  { id: "sport", name: "Спорт", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.55, steer: 1, L: 4.4, W: 1.84, roof: 1.3, color: "#ef4444", snd: 1.15, desc: "Швидкий і слухняний" },
+  { id: "muscle", name: "Мускул", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.42, steer: 1, L: 4.9, W: 1.94, roof: 1.36, color: "#f59e0b", snd: .72, desc: "Потужний, любить зноси" },
+  { id: "hyper", name: "Гіпер", kind: "hyper", price: 3200, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.6, W: 2.02, roof: 1.12, color: "#a855f7", snd: 1.3, desc: "Король траси" }
 ];
 export const COLORS = ["#3b82f6", "#ef4444", "#f59e0b", "#22c55e", "#a855f7", "#f4f4f5", "#111827", "#14b8a6", "#ec4899"];
 const WB = 2.7;
@@ -111,6 +111,7 @@ export class Car {
 
 export function stepCar(c, inp, dt, T, H) {
   const s = c.spec;
+  if (inp.hold) { c.vx = c.vz = 0; c.vf = 0; c.steerS = 0; inp = { steer: 0, gas: false, brake: false, drift: false, nitro: false }; }
   nearest(T, c.x, c.z, c.idx, c.nr); c.idx = c.nr.idx;
   const lat = c.nr.lat, off = Math.abs(lat) > T.halfW + 1.2;
   c.off = off;
@@ -119,7 +120,7 @@ export function stepCar(c, inp, dt, T, H) {
   const vf0 = vf;
   const boost = c.boostT > 0, vmax = s.vmax * (off ? .62 : 1) * (boost ? 1.22 : 1);
   // кермо: плавно
-  const rate = Math.abs(inp.steer) > Math.abs(c.steerS) ? 4.5 : 8;
+  const rate = Math.abs(inp.steer) > Math.abs(c.steerS) ? 6.5 : 10;
   c.steerS += clamp(inp.steer - c.steerS, -rate * dt, rate * dt);
   const aMax = s.mu * 9.81 * (off ? .62 : 1) * c.surf;
   const drift = inp.drift && Math.abs(vf) > 9;
@@ -140,6 +141,7 @@ export function stepCar(c, inp, dt, T, H) {
   c.braking = false;
   if (inp.gas) { const r = clamp(vf / vmax, 0, 1.3); vf += s.acc * (boost ? 1.7 : 1) * (1 - Math.pow(Math.min(r, 1), 2.4)) * dt; }
   if (vf > vmax) vf -= (vf - vmax) * 2.2 * dt;
+  if (inp.assist && !drift) { const vLim = Math.sqrt(aMax * 80 / clamp(Math.abs(c.steerS), .25, 1)); if (vf > vLim) vf -= ((vf - vLim) * 1.8 + 2) * dt; }
   if (inp.brake) {
     if (vf > .8) { vf = Math.max(0, vf - s.brake * dt); c.braking = true; }
     else vf = Math.max(vf - 4.2 * dt, -9);
@@ -201,7 +203,7 @@ export function syncModel(c, m, dt) {
 /* ---------------- ШІ ---------------- */
 export function aiInput(c, T, cars, dt, racing) {
   const M = T.M, sp = Math.max(0, c.vf);
-  if (!racing) return { steer: 0, gas: false, brake: true };
+  if (!racing) return { hold: true };
   // об'їзд машин попереду
   let avoid = 0;
   const fx = Math.cos(c.a), fz = Math.sin(c.a);
