@@ -113,3 +113,9 @@ body.free #hPos,body.free #hLap,body.free #hTime,body.free #mini{display:none}
 #hDrift em{font-size:22px;font-weight:900;color:#ffc247;margin-left:6px;font-style:italic}
 #hDrift.act b{color:#ffc247}
 #hDrift .tot{font-size:11px;color:var(--dim);margin-top:2px}
+
+#fxVig,#fxSpd{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity .25s}
+body.rot #fxVig,body.rot #fxSpd{inset:auto;top:0;left:0;width:100%;height:100%}
+#fxVig{background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 52%,rgba(0,0,0,.5) 100%);opacity:1}
+#fxSpd{background:repeating-conic-gradient(from 0deg at 50% 56%,rgba(255,255,255,0) 0 5deg,rgba(255,255,255,.22) 5.3deg 5.7deg,rgba(255,255,255,0) 6deg 11deg);-webkit-mask-image:radial-gradient(ellipse at 50% 56%,transparent 38%,#000 92%);mask-image:radial-gradient(ellipse at 50% 56%,transparent 38%,#000 92%)}
+body.nit #fxVig{background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 45%,rgba(40,120,255,.35) 100%)}

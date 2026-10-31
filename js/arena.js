@@ -29,7 +29,7 @@ export function buildArena(kind, quality) {
   const hemi = new THREE.HemisphereLight(th.hemiSky, th.hemiGnd, th.hemiI); scene.add(hemi);
   if (quality.shadow) {
     sun.castShadow = true; sun.shadow.mapSize.set(quality.shadow, quality.shadow);
-    const c = sun.shadow.camera; c.left = -70; c.right = 70; c.top = 70; c.bottom = -70; c.near = 10; c.far = 700; sun.shadow.bias = -.0004; sun.shadow.normalBias = .5;
+    const c = sun.shadow.camera; c.left = -52; c.right = 52; c.top = 52; c.bottom = -52; c.near = 10; c.far = 700; sun.shadow.bias = -.0004; sun.shadow.normalBias = .5;
   }
   const circles = [], rects = []; // [x,z,r,hard], [cx,cz,hx,hz]
   const shadow = !!quality.shadow;

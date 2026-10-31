@@ -1,4 +1,5 @@
 import * as THREE from "../vendor/three.module.min.js";
+import { mergeGeometries } from "../vendor/jsm/BufferGeometryUtils.js";
 import { buildCenterline, nearest, groundH, hills, smooth, lerp, clamp } from "./trackmath.js";
 
 export const THEMES = {
@@ -51,9 +52,12 @@ function barrierTexture() {
 function groundTexture(base) {
   return canvasTex(512, 512, (g, w, h) => {
     g.fillStyle = `rgb(${base[0]},${base[1]},${base[2]})`; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 9000; i++) {
-      const k = (Math.random() - .5) * 46; g.fillStyle = `rgba(${clamp(base[0] + k, 0, 255)},${clamp(base[1] + k * 1.1, 0, 255)},${clamp(base[2] + k * .8, 0, 255)},.55)`;
-      g.fillRect(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 2 + Math.random() * 6);
+    for (let i = 0; i < 260; i++) { const k = (Math.random() - .5) * 34, r = 14 + Math.random() * 46; const gr = g.createRadialGradient(0, 0, 0, 0, 0, r); const x = Math.random() * w, y = Math.random() * h;
+      gr.addColorStop(0, `rgba(${clamp(base[0] + k, 0, 255)},${clamp(base[1] + k * 1.2, 0, 255)},${clamp(base[2] + k * .7, 0, 255)},.5)`); gr.addColorStop(1, "rgba(0,0,0,0)");
+      g.save(); g.translate(x, y); g.fillStyle = gr; g.fillRect(-r, -r, r * 2, r * 2); g.restore(); }
+    for (let i = 0; i < 16000; i++) {
+      const k = (Math.random() - .5) * 26; g.fillStyle = `rgba(${clamp(base[0] + k, 0, 255)},${clamp(base[1] + k * 1.1, 0, 255)},${clamp(base[2] + k * .8, 0, 255)},.35)`;
+      const sz = 1 + Math.random() * 2.5; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, sz, 0, 7); g.fill();
     }
     for (let i = 0; i < 1200; i++) { g.strokeStyle = `rgba(${clamp(base[0] + 25, 0, 255)},${clamp(base[1] + 30, 0, 255)},${clamp(base[2] + 12, 0, 255)},.35)`; g.beginPath(); const x = Math.random() * w, y = Math.random() * h; g.moveTo(x, y); g.lineTo(x + rnd(-3, 3), y - rnd(3, 9)); g.stroke(); }
   }, true);
@@ -100,7 +104,7 @@ export function buildWorld(def, quality) {
   const hemi = new THREE.HemisphereLight(th.hemiSky, th.hemiGnd, th.hemiI); scene.add(hemi);
   if (quality.shadow) {
     sun.castShadow = true; sun.shadow.mapSize.set(quality.shadow, quality.shadow);
-    const c = sun.shadow.camera; c.left = -70; c.right = 70; c.top = 70; c.bottom = -70; c.near = 10; c.far = 700;
+    const c = sun.shadow.camera; c.left = -52; c.right = 52; c.top = 52; c.bottom = -52; c.near = 10; c.far = 700;
     sun.shadow.bias = -.0004; sun.shadow.normalBias = .5;
   }
 
@@ -124,7 +128,7 @@ export function buildWorld(def, quality) {
     if (dd < 2.5) y -= .22;
     pos.setXYZ(i, x, y, z);
     uv.setXY(i, x / 14, z / 14);
-    const n = .9 + .1 * Math.sin(x * .05) * Math.cos(z * .043) + .06 * Math.sin(x * .17 + z * .13);
+    const n = .9 + .1 * Math.sin(x * .05) * Math.cos(z * .043) + .06 * Math.sin(x * .17 + z * .13) + .07 * Math.sin(x * .011 + 1.3) * Math.sin(z * .013) + .05 * Math.sin(x * .031 - z * .027);
     const g = smooth(T.halfW + 3, T.halfW + 8, tmp.dist); // гравій біля узбіччя
     const hv = clamp((y - tmp.h) / 40, -.3, .5);
     for (let k = 0; k < 3; k++) cols[i * 3 + k] = lerp(gv[k], gcol[k], g) / 255 * n * (1 + hv * .3) * (th.tree === "rock" ? 1 : 1);
@@ -153,7 +157,7 @@ export function buildWorld(def, quality) {
   }
   const hw = T.halfW;
   const rt = roadTexture(); rt.repeat.set(1, 1); rt.anisotropy = 8;
-  const road = ribbon(-hw, hw, .02, new THREE.MeshStandardMaterial({ map: rt, roughness: .9, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 24);
+  const road = ribbon(-hw, hw, .02, new THREE.MeshStandardMaterial({ map: rt, roughness: th.lamps ? .55 : th.ground[0] > 200 ? .75 : .88, metalness: 0, envMapIntensity: th.lamps ? 1.6 : 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 24);
   root.add(road);
   const kt = kerbTexture(); kt.repeat.set(1, 1);
   const kmat = new THREE.MeshStandardMaterial({ map: kt, roughness: .7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
@@ -194,7 +198,14 @@ export function buildWorld(def, quality) {
   root.add(gantry);
 
   /* --- трибуни --- */
-  const crowd = canvasTex(256, 128, (g, w, h) => { g.fillStyle = "#3a3f4a"; g.fillRect(0, 0, w, h); for (let i = 0; i < 1500; i++) { g.fillStyle = `hsl(${Math.random() * 360},65%,${45 + Math.random() * 25}%)`; g.fillRect(Math.random() * w, Math.random() * h, 3, 4); } }, true);
+  const crowd = canvasTex(128, 64, (g, w, h) => {
+    g.fillStyle = "#555a66"; g.fillRect(0, 0, w, h);
+    for (let row = 0; row < 4; row++) {
+      const y0 = row * 16; g.fillStyle = "rgba(0,0,0,.18)"; g.fillRect(0, y0 + 13, w, 3);
+      for (let x = 0; x < w; x += 8) { const l = 46 + Math.random() * 12; g.fillStyle = `hsl(${(Math.random() * 6 | 0) * 60 + 10},22%,${l}%)`; g.fillRect(x + 1, y0 + 4, 6, 9); }
+    }
+  }, true);
+  crowd.anisotropy = 8;
   crowd.repeat.set(6, 1);
   for (const [k, side] of [[T.M - 14, 1], [10, -1], [Math.floor(T.M * .5), 1]]) {
     const st = new THREE.Group(); const L = 60;
@@ -209,37 +220,77 @@ export function buildWorld(def, quality) {
   }
 
   /* --- дерева / скелі --- */
-  const treeN = quality.trees, tg1 = th.tree === "pine" ? new THREE.ConeGeometry(2.6, 9, 7) : new THREE.DodecahedronGeometry(2.4, 0);
+  const treeN = quality.trees, pine = th.tree === "pine";
+  let tg1;
+  if (pine) {
+    const parts = [[3.1, 4.2, 0], [2.4, 3.8, 2.4], [1.7, 3.4, 4.6]].map(([r, hh, y]) => new THREE.ConeGeometry(r, hh, 8).translate(0, y + hh / 2, 0));
+    tg1 = mergeGeometries(parts);
+  } else tg1 = new THREE.DodecahedronGeometry(2.4, 1);
   const tmat = new THREE.MeshStandardMaterial({ color: th.treeCol, roughness: .95, flatShading: true });
   const inst = new THREE.InstancedMesh(tg1, tmat, treeN);
   const trunkG = new THREE.CylinderGeometry(.35, .5, 2.2, 5), trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 1 }), treeN);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), sc = new THREE.Vector3();
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), sc = new THREE.Vector3(), col = new THREE.Color();
+  const bushN = Math.floor(treeN * .55), bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: th.treeCol, roughness: 1, flatShading: true }), bushN);
   let placed = 0, tries = 0;
   while (placed < treeN && tries < treeN * 30) {
     tries++;
     const x = cx + (Math.random() - .5) * (sx - 40), z = cz + (Math.random() - .5) * (sz - 40);
     nearest(T, x, z, -1, tmp);
     if (tmp.dist < hw + 14 + Math.random() * 20) continue;
-    const y = groundH(T, x, z, tmp, th.hill), s = .8 + Math.random() * 1.1;
-    const pine = th.tree === "pine";
+    const y = groundH(T, x, z, tmp, th.hill), s = .8 + Math.random() * 1.2;
     e.set(pine ? 0 : Math.random() * 3, Math.random() * 6, pine ? 0 : Math.random() * 3); q.setFromEuler(e);
-    sc.set(s, pine ? s * (.9 + Math.random() * .5) : s * .7, s);
-    v3.set(x, y + (pine ? 4.2 * sc.y + 1.6 : .9 * s), z); m4.compose(v3, q, sc); inst.setMatrixAt(placed, m4);
+    sc.set(s, pine ? s * (.9 + Math.random() * .6) : s * .7, s);
+    v3.set(x, y + (pine ? 1.4 * sc.y : .9 * s + 1.2), z); m4.compose(v3, q, sc); inst.setMatrixAt(placed, m4);
+    const v = .72 + Math.random() * .5; col.setRGB(v * (.92 + Math.random() * .16), v, v * (.9 + Math.random() * .14)); inst.setColorAt(placed, col);
     if (pine) { v3.set(x, y + 1.1 * s, z); m4.compose(v3, new THREE.Quaternion(), sc.set(s, s, s)); trunk.setMatrixAt(placed, m4); }
-    else { v3.set(x, -999, z); m4.compose(v3, q, sc.set(.01, .01, .01)); trunk.setMatrixAt(placed, m4); }
+    else { v3.set(x, y + .9 * s, z); m4.compose(v3, new THREE.Quaternion(), sc.set(s * .9, s * 1.6, s * .9)); trunk.setMatrixAt(placed, m4); }
     placed++;
   }
-  inst.count = trunk.count = placed; inst.castShadow = !!quality.shadow && quality.treeShadow; inst.instanceMatrix.needsUpdate = trunk.instanceMatrix.needsUpdate = true;
+  inst.count = trunk.count = placed; inst.castShadow = !!quality.shadow && quality.treeShadow; inst.instanceMatrix.needsUpdate = trunk.instanceMatrix.needsUpdate = true; inst.instanceColor.needsUpdate = true;
   root.add(inst, trunk);
+  // кущі й камені ближче до траси
+  let bp = 0; tries = 0;
+  while (bp < bushN && tries < bushN * 40) {
+    tries++;
+    const k = (Math.random() * T.M) | 0, side = Math.random() < .5 ? -1 : 1, lat = side * (hw + 9 + Math.random() * 26);
+    const x = T.x[k] + T.nx[k] * lat, z = T.z[k] + T.nz[k] * lat; nearest(T, x, z, k, tmp); if (tmp.dist < hw + 8) continue;
+    const y = groundH(T, x, z, tmp, th.hill), s = .5 + Math.random() * 1.3;
+    e.set(Math.random() * 3, Math.random() * 6, Math.random() * 3); q.setFromEuler(e); v3.set(x, y + s * .35, z); sc.set(s * 1.3, s * .7, s * 1.1); m4.compose(v3, q, sc); bush.setMatrixAt(bp, m4);
+    const v = .65 + Math.random() * .55; col.setRGB(v, v * (.95 + Math.random() * .2), v * .9); bush.setColorAt(bp, col); bp++;
+  }
+  bush.count = bp; bush.instanceMatrix.needsUpdate = true; if (bush.instanceColor) bush.instanceColor.needsUpdate = true; root.add(bush);
+
+  /* --- рекламні щити вздовж траси --- */
+  {
+    const names = ["TURBO", "NITRO", "DRIFT", "SPEED"], cols = ["#d92b2b", "#1f6fd1", "#f2b705", "#1ea85a"];
+    names.forEach((nm, bi) => {
+      const tex = canvasTex(256, 64, (g, w, h) => { g.fillStyle = cols[bi]; g.fillRect(0, 0, w, h); g.fillStyle = "rgba(255,255,255,.92)"; g.font = "italic 900 40px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(nm, w / 2, h / 2 + 2); g.fillStyle = "rgba(0,0,0,.25)"; g.fillRect(0, h - 6, w, 6); });
+      const lst = []; for (let k = bi * 9 + 5; k < T.M; k += 36) for (const sd of [-1, 1]) if (((k / 9) + (sd > 0 ? 1 : 0)) % 2 < 2) lst.push([k, sd]);
+      const bm = new THREE.InstancedMesh(new THREE.BoxGeometry(.2, 1.7, 6.4), [0, 0, 0, 0, 0, 0].map((_, i) => i === 0 ? new THREE.MeshStandardMaterial({ map: tex, roughness: .6, emissive: th.lamps ? 0xffffff : 0x000000, emissiveMap: tex, emissiveIntensity: .5 }) : new THREE.MeshStandardMaterial({ color: 0x222222 })), lst.length);
+      const qq = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+      lst.forEach(([k, sd], n) => { const lat = sd * (bl + 1.6), x = T.x[k] + T.nx[k] * lat, z = T.z[k] + T.nz[k] * lat, y = H(x, z, k); qq.setFromAxisAngle(up, -Math.atan2(T.tz[k], T.tx[k]) + Math.PI / 2 + (sd > 0 ? Math.PI : 0)); m4.compose(v3.set(x, y + 1.15, z), qq, sc.set(1, 1, 1)); bm.setMatrixAt(n, m4); });
+      bm.castShadow = false; root.add(bm);
+    });
+  }
 
   /* --- гори на горизонті --- */
-  const mm = new THREE.MeshStandardMaterial({ color: th.mount, roughness: 1, flatShading: true, fog: false });
-  mm.color.lerp(new THREE.Color(th.hor), .35);
-  const rad = Math.hypot(sx, sz) / 2 + 700;
-  for (let i = 0; i < 26; i++) {
-    const a = i / 26 * Math.PI * 2 + Math.random() * .2, r = rad + Math.random() * 500;
-    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), mm), w = 380 + Math.random() * 420, h = 140 + Math.random() * 260;
-    m.scale.set(w, h, w); m.position.set(cx + Math.cos(a) * r, h * .25 - 40, cz + Math.sin(a) * r); root.add(m);
+  const mm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true, fog: false });
+  const rad = Math.hypot(sx, sz) / 2 + 700, base = new THREE.Color(th.mount).lerp(new THREE.Color(th.hor), .35), peak = th.tree === "pine" && th.ground[0] > 200 ? new THREE.Color(0xf4f8ff) : new THREE.Color(0xe9eef5).lerp(new THREE.Color(th.hor), .25);
+  const snowy = th.hill !== 20 && th.ground[0] > 200 || th.top === 0x2c6cc0;
+  for (let i = 0; i < 34; i++) {
+    const a = i / 34 * Math.PI * 2 + Math.random() * .2, r = rad + Math.random() * 600;
+    const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position, cs = new Float32Array(p.count * 3), ph = Math.random() * 10;
+    for (let k = 0; k < p.count; k++) {
+      let x = p.getX(k), y = p.getY(k), z = p.getZ(k);
+      const nz = 1 + .22 * Math.sin(x * 5 + ph) * Math.cos(z * 4.3 + ph) + .12 * Math.sin(x * 11 + z * 9 + ph) + (y > .3 ? .18 * Math.sin(x * 7 - z * 6) : 0);
+      p.setXYZ(k, x * nz, y > 0 ? y * (1 + .25 * Math.abs(Math.sin(x * 6 + ph * 2))) : y, z * nz);
+      const hh = clamp(y * 1.2, 0, 1), sn = snowy ? smooth(.52, .8, hh + .07 * Math.sin(x * 14 + z * 12)) : 0;
+      const c = base.clone().multiplyScalar(.82 + hh * .3 + .1 * Math.sin(x * 9 + z * 7)).lerp(peak, sn);
+      cs[k * 3] = c.r; cs[k * 3 + 1] = c.g; cs[k * 3 + 2] = c.b;
+    }
+    g.setAttribute("color", new THREE.BufferAttribute(cs, 3)); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, mm), w = 380 + Math.random() * 460, h = 170 + Math.random() * 300;
+    m.scale.set(w, h, w); m.position.set(cx + Math.cos(a) * r, h * .22 - 40, cz + Math.sin(a) * r); m.rotation.y = Math.random() * 6; root.add(m);
   }
 
   /* --- хмари --- */

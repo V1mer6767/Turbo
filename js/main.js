@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 6;
+const BUILD = 7;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -55,7 +55,7 @@ document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target
 /* ---------------- стан ---------------- */
 let W = null, T = null, scene = null, curTrack = -1, envRT = null;
 let cars = [], player = null, state = "loading", raceT = 0, countT = 0, countShown = -1, laps = 3, finishTimer = 0, camMode = 0, demoT = 0;
-let freeKind = null, prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
+let fxS = -1, fxN = false, freeKind = null, prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
 let skidMesh = null, skHead = 0, skCount = 0, skDirty = false, partPts = null, partMat = null;
 const SKN = 2600, PN = 180;
 const STEP = 1 / 90;
@@ -280,8 +280,25 @@ function skidSeg(x0, y0, z0, x1, y1, z1) {
 }
 
 /* ---------------- машини ---------------- */
+let blobTex = null, glowTex = null;
+function fxTex() {
+  if (blobTex) return;
+  const mk = (n, f) => { const k = document.createElement("canvas"); k.width = k.height = n; f(k.getContext("2d"), n); const t = new THREE.CanvasTexture(k); t.colorSpace = THREE.SRGBColorSpace; return t; };
+  blobTex = mk(64, (g, n) => { const gr = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); gr.addColorStop(0, "rgba(0,0,0,.75)"); gr.addColorStop(.55, "rgba(0,0,0,.4)"); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, n, n); });
+  glowTex = mk(64, (g, n) => { const gr = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(.2, "rgba(255,255,255,.55)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, n, n); });
+}
 function addModel(c, th, light) {
   const m = createCarModel(c.spec, c.color, th.env, c === player); c.model = m; scene.add(m.root);
+  fxTex();
+  const bl = new THREE.Mesh(new THREE.PlaneGeometry(c.spec.L * 1.25, c.spec.W * 1.45), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4, fog: true }));
+  bl.rotation.x = -Math.PI / 2; bl.position.y = .05; bl.renderOrder = 1; m.root.add(bl);
+  m.glows = [];
+  const L = c.spec.L, Wd = c.spec.W, hy = (m.fm && m.fm.tailY) || .8;
+  for (const sd of [-1, 1]) {
+    const gm = new THREE.SpriteMaterial({ map: glowTex, color: 0xff2a1a, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: .35 });
+    const sp = new THREE.Sprite(gm); sp.scale.set(1.5, 1.1, 1); sp.position.set(-L / 2 - .08, .82, sd * Wd * .34); m.tilt.add(sp); m.glows.push(sp);
+    if (th.lamps) { const hm = new THREE.SpriteMaterial({ map: glowTex, color: 0xfff1cf, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: .5 }); const hp = new THREE.Sprite(hm); hp.scale.set(1.3, .9, 1); hp.position.set(L / 2 + .1, .72, sd * Wd * .32); m.tilt.add(hp); }
+  }
   if (light) { const sp = new THREE.SpotLight(0xfff0d0, 700, 120, .5, .6, 1.4); sp.position.set(c.spec.L / 2, .8, 0); sp.target.position.set(40, -.5, 0); m.tilt.add(sp, sp.target); }
 }
 function gridPos(k) { return { idx: -(3 + Math.floor(k / 2) * 2), lat: (k % 2 ? 1 : -1) * 3.1 }; }
@@ -659,6 +676,8 @@ function frame(now) {
     W.sun.target.position.set(f.x, f.y, f.z); W.sun.position.set(f.x + W.sun.userData.dx, f.y + W.sun.userData.dy, f.z + W.sun.userData.dz); W.sun.target.updateMatrixWorld();
   }
   if (player && (state === "race" || state === "count" || state === "finish")) hud(dt); else if (state === "free") hudFree();
+  { const on = player && (state === "race" || state === "free" || state === "finish"), v = on ? clamp((player.speed * 3.6 - 130) / 170, 0, 1) * .75 + (player.boostT > 0 ? .35 : 0) : 0, r = Math.round(Math.min(1, v) * 20) / 20;
+    if (r !== fxS) { fxS = r; $("#fxSpd").style.opacity = r; } const nt = on && player.boostT > 0; if (nt !== fxN) { fxN = nt; document.body.classList.toggle("nit", nt); } }
   A.audioFrame(player, state === "race" || state === "finish" || state === "free" ? true : (state === "count" ? "idle" : false));
   renderer.render(scene, camera);
   if (interp) restoreInterp();
