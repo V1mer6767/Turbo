@@ -5,7 +5,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 3;
+const BUILD = 4;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -283,9 +283,10 @@ function spawn(mode) {
       c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
       const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : (CARS.filter(x => hasCar(x.id)).length ? CARS.filter(x => hasCar(x.id)) : CARS), base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
-      const sp = { ...base, vmax: vm, acc: 8.5 + def.diff * 1.8 + (mul - 1) * 8, mu: 1.3 + def.diff * .06, brake: 12.5 };
+      const P = CARS.find(x => x.id === S.car) || CARS[0], f = .84 + (mul - .92) * .6;
+      const sp = { ...base, vmax: Math.min(vm, P.vmax * f * rnd(.97, 1.01)), acc: Math.min(8.5 + def.diff * 1.8 + (mul - 1) * 8, P.acc * (f - .05)), mu: Math.min(1.3 + def.diff * .06, P.mu * (f + .02)), brake: Math.min(12.5, P.brake) };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
-      c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.93, 1), lane: rnd(-3, 3), surf });
+      c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.9, .98), lane: rnd(-3, 3), surf });
       c.skillBase = c.skill;
     }
     const g = gridPos(k); c.place(T, Math.round(g.idx), g.lat, W.H); c.pi = c.idx; c.lap = 0; c.lapStart = 0; c.cheat = 0;
@@ -362,7 +363,7 @@ function rubber(dt) {
   if (!player) return; ordCache = order();
   for (const c of cars) if (c !== player && c.skillBase) {
     const d = (c.progress - player.progress) * T.step;
-    c.skill = c.skillBase * (d > 220 ? .965 : d < -160 ? 1.035 : 1);
+    c.skill = c.skillBase * (d > 260 ? .9 : d > 120 ? .95 : d < -200 ? 1.02 : 1);
   }
 }
 function racePlace(c) { return ordCache.indexOf(c) + 1; }
