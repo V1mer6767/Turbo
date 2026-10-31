@@ -199,6 +199,7 @@ export function syncModel(c, m, dt) {
   const spinA = c.vf * dt;
   for (const w of m.wheels) { w.spin.rotation.z -= spinA / w.r; if (w.front) w.pivot.rotation.y = -c.steerS * .42 * (1 - clamp(c.speed / 120, 0, .7)); }
   m.tail.emissiveIntensity = c.braking ? 3 : .7;
+  if (m.steerObj) m.steerObj.quaternion.setFromAxisAngle(m.steerAx, -c.steerS * 2.4);
   if (m.glows) { const o = c.braking ? 1 : .32; for (const g of m.glows) { g.material.opacity = o; g.scale.set(c.braking ? 2.4 : 1.5, c.braking ? 1.7 : 1.1, 1); } }
   const f = c.boostT > 0 ? 1 : 0;
   m.fm.opacity = lerp(m.fm.opacity, f * .85, Math.min(1, dt * 14));

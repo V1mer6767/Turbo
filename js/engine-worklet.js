@@ -1,6 +1,6 @@
 /* Фізичний синтез двигуна: гармоніки робочого циклу (720°) зі спектром, що залежить від порядку запалювання,
    резонанси вихлопу, шум згоряння/впуску, турбіна (свист, стравлювання), постріли при скиданні газу, відсічка. */
-const K = 56;
+const K = 120;
 class Engine extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
@@ -12,9 +12,9 @@ class Engine extends AudioWorkletProcessor {
   constructor() {
     super();
     this.cfg = null; this.ph = 0; this.ph2 = 0;
-    this.A = new Float32Array(K + 1); this.Ps = new Float32Array(K + 1); this.mag = new Float32Array(K + 1); this.psi = new Float32Array(K + 1);
+    this.A = new Float32Array(K + 1); this.Ps = new Float32Array(K + 1); this.mag = new Float32Array(K + 1); this.psi = new Float32Array(K + 1); this.cpsi = new Float32Array(K + 1); this.spsi = new Float32Array(K + 1);
     this.jit = new Float32Array(K + 1); this.thrS = 0; this.spool = 0; this.prevThr = 0; this.rpmS = 800;
-    this.pop = 0; this.popT = 0; this.blow = 0; this.cn = 0; this.lp1 = 0; this.lp2 = 0; this.bp1 = 0; this.bp2 = 0; this.lim = 0; this.wob = 0; this.t = 0; this.liftT = 0; this.turbPh = 0; this.olp = 0;
+    this.pop = 0; this.popT = 0; this.blow = 0; this.cn = 0; this.lp1 = 0; this.lp2 = 0; this.bp1 = 0; this.bp2 = 0; this.lim = 0; this.wob = 0; this.t = 0; this.liftT = 0; this.turbPh = 0; this.olp = 0; this.buf = new Float32Array(4096); this.wp = 0;
     this.port.onmessage = e => { if (e.data && e.data.cfg) this.setCfg(e.data.cfg); };
   }
   setCfg(c) {
@@ -24,7 +24,7 @@ class Engine extends AudioWorkletProcessor {
     for (let k = 1; k <= K; k++) {
       let re = 0, im = 0, sa = 0;
       for (let i = 0; i < n; i++) { const a = c.fire[i][1], th = c.fire[i][0]; re += a * Math.cos(2 * Math.PI * k * th); im -= a * Math.sin(2 * Math.PI * k * th); sa += Math.abs(a); }
-      this.mag[k] = Math.hypot(re, im) / sa; this.psi[k] = Math.atan2(im, re);
+      this.mag[k] = Math.hypot(re, im) / sa; this.psi[k] = Math.atan2(im, re); this.cpsi[k] = Math.cos(this.psi[k]); this.spsi[k] = Math.sin(this.psi[k]);
     }
   }
   process(inputs, outputs, params) {
@@ -74,7 +74,8 @@ class Engine extends AudioWorkletProcessor {
       this.ph += f0 / sr; if (this.ph >= 1) this.ph -= 1;
       const w = 6.283185307 * this.ph;
       let y = 0;
-      for (let k = 1; k <= K; k++) { const a = A[k]; if (a > 1e-4) y += a * Math.sin(k * w + this.psi[k]); }
+      { const s1 = Math.sin(w), c1 = Math.cos(w); let sk = s1, ck = c1;
+        for (let k = 1; k <= K; k++) { const a = A[k]; if (a > 1e-4) { const p = this.psi[k]; y += a * (sk * this.cpsi[k] + ck * this.spsi[k]); } const sn = sk * c1 + ck * s1; ck = ck * c1 - sk * s1; sk = sn; } }
       y *= g0;
       // шум згоряння: у такт запалювання
       this.ph2 += fireHz / 240 / sr * 2; // fireHz/ (rpm-cycle) -> фаза запалювань
@@ -95,7 +96,8 @@ class Engine extends AudioWorkletProcessor {
       if (limiting) { this.lim += cutHz / sr; if (this.lim > 1) this.lim -= 1; if (this.lim > .62) y *= .15; }
       this.t += 1 / sr;
       // м'яке обмеження
-      this.olp += (Math.tanh(y * 1.2) - this.olp) * .42;   // зрізаємо різкий верх
+      if (c.pipe) { const L = 4096, wp = this.wp; this.buf[wp] = y; let z = y; for (const q of c.pipe) z += q[1] * this.buf[(wp - ((q[0] * sr / 1000) | 0) + L) & (L - 1)]; this.wp = (wp + 1) & (L - 1); y = z * (c.pk || .6); }
+      this.olp += (Math.tanh(y * (c.drive || 1.2)) - this.olp) * (c.lp || .42);   // зрізаємо різкий верх
       out[i] = this.olp * .78;
     }
     return true;
