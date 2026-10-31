@@ -14,7 +14,7 @@ class Engine extends AudioWorkletProcessor {
     this.cfg = null; this.ph = 0; this.ph2 = 0;
     this.A = new Float32Array(K + 1); this.Ps = new Float32Array(K + 1); this.mag = new Float32Array(K + 1); this.psi = new Float32Array(K + 1);
     this.jit = new Float32Array(K + 1); this.thrS = 0; this.spool = 0; this.prevThr = 0; this.rpmS = 800;
-    this.pop = 0; this.popT = 0; this.blow = 0; this.cn = 0; this.lp1 = 0; this.lp2 = 0; this.bp1 = 0; this.bp2 = 0; this.lim = 0; this.wob = 0; this.t = 0; this.liftT = 0; this.turbPh = 0;
+    this.pop = 0; this.popT = 0; this.blow = 0; this.cn = 0; this.lp1 = 0; this.lp2 = 0; this.bp1 = 0; this.bp2 = 0; this.lim = 0; this.wob = 0; this.t = 0; this.liftT = 0; this.turbPh = 0; this.olp = 0;
     this.port.onmessage = e => { if (e.data && e.data.cfg) this.setCfg(e.data.cfg); };
   }
   setCfg(c) {
@@ -86,13 +86,6 @@ class Engine extends AudioWorkletProcessor {
       // впуск
       this.bp1 += (nz - this.bp1) * (.08 + rn * .12); this.bp2 += (this.bp1 - this.bp2) * .3;
       y += (this.bp1 - this.bp2) * c.intake * thr * (.4 + rn) * gain * 2.2;
-      // турбіна: свист + шум
-      if (c.turbo && this.spool > .02) {
-        this.turbPh += turbF / sr; if (this.turbPh > 1) this.turbPh -= 1;
-        y += Math.sin(6.2831853 * this.turbPh) * c.turbo * this.spool * .35 * gain;
-        y += (nz - this.bp1) * .01 * this.spool * gain;
-      }
-      if (wbBlow > .01) { y += ((nz - this.lp2) * .6) * this.blow * .18 * gain; this.lp2 += (nz - this.lp2) * .3; this.blow *= .99985; }
       // постріли
       if (this.liftT > 0 && c.pops && rn > .3) {
         if (Math.random() < c.pops * dtb / N * 22) this.pop = 1;
@@ -102,7 +95,8 @@ class Engine extends AudioWorkletProcessor {
       if (limiting) { this.lim += cutHz / sr; if (this.lim > 1) this.lim -= 1; if (this.lim > .62) y *= .15; }
       this.t += 1 / sr;
       // м'яке обмеження
-      const v = y; out[i] = Math.tanh(v * 1.3) * .8;
+      this.olp += (Math.tanh(y * 1.2) - this.olp) * .42;   // зрізаємо різкий верх
+      out[i] = this.olp * .78;
     }
     return true;
   }

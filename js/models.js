@@ -16,7 +16,7 @@ export function ensureCar(id) {
   if (tpl[id]) return Promise.resolve(true);
   if (!MODEL_FILE[id]) return Promise.resolve(false);
   return pend[id] || (pend[id] = new Promise(res => {
-    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + "_int.glb", g => { g.scene.traverse(o => { if (o.isMesh) o.frustumCulled = true; }); r(g.scene); }, undefined, () => r(null)));
+    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + "_i2.glb", g => { g.scene.traverse(o => { if (o.isMesh) o.frustumCulled = true; }); r(g.scene); }, undefined, () => r(null)));
     loader.load("models/" + MODEL_FILE[id] + ".glb", g => { intP.then(is => { try { tpl[id] = prepare(g); tpl[id].int = is; res(true); } catch (e) { console.warn(e); res(false); } }); }, undefined, e => { console.warn("model", id, e); pend[id] = null; res(false); });
   }));
 }
