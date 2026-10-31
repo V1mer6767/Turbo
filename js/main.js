@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 8;
+const BUILD = 9;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -331,7 +331,7 @@ function spawn(mode) {
   syncAll(0.016);
 }
 function syncAll(dt) {
-  if (player && player.model.glows && camera) { const fx = Math.cos(player.a), fz = Math.sin(player.a), front = (camera.position.x - player.x) * fx + (camera.position.z - player.z) * fz > 0 || camMode === 1; for (const g of player.model.glows) g.visible = !front; if (player.model.headG) for (const g of player.model.headG) g.visible = front && camMode !== 1; } for (const c of cars) { syncModel(c, c.model, dt); } if (player) player.model.root.visible = camMode !== 1; }
+  if (player && player.model.glows && camera) { const fx = Math.cos(player.a), fz = Math.sin(player.a), front = (camera.position.x - player.x) * fx + (camera.position.z - player.z) * fz > 0 || camMode === 1; for (const g of player.model.glows) g.visible = !front; if (player.model.headG) for (const g of player.model.headG) g.visible = front && camMode !== 1; } for (const c of cars) { syncModel(c, c.model, dt); } if (player) player.model.root.visible = true; }
 
 /* ---------------- вільний режим (дрифт) ---------------- */
 const dr = { cur: 0, t: 0, idle: 0, mult: 1, session: 0, earned: 0, hit: 0 };
@@ -346,7 +346,7 @@ async function startFree(kind) {
   envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
   initEffects(); applySize();
   $("#loadTxt").textContent = "Завантаження машини…"; await ensureCar(S.car);
-  spawnFree(); drReset();
+  spawnFree(); drReset(); camNear();
   try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {}
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true;
   document.body.classList.add("free"); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
@@ -390,7 +390,7 @@ async function startRace(ti) {
   if (ti !== curTrack || freeKind) await loadTrack(ti);
   state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Завантаження машин…"; await new Promise(r => setTimeout(r, 30));
   await Promise.all(CARS.slice(0, CARS.findIndex(x => x.id === S.car) + 1).map(c => ensureCar(c.id)));
-  laps = S.laps; spawn("race"); try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {} raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
+  laps = S.laps; spawn("race"); camNear(); try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {} raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true; state = "count";
   document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   snapCamera(); applySize();
@@ -463,10 +463,12 @@ function snapCamera() {
   camPos.set(player.x - Math.cos(camYaw) * b, player.y + 2.6, player.z - Math.sin(camYaw) * b);
   camera.position.copy(camPos); camLook.set(player.x, player.y + 1.2, player.z); camera.lookAt(camLook);
 }
+const EYE = { city: [-.1, -.2, .84], sport: [-.1, -.2, .84], muscle: [-.1, -.2, .82], gt: [-.5, -.2, .88], hyper: [-.1, -.2, .84] };
+function camNear() { camera.near = camMode === 1 ? .1 : .3; camera.updateProjectionMatrix(); if (player) { const pm = player.model, ins = camMode === 1 && pm.hasInt; pm.body.visible = !ins; pm.wheels.forEach(w => (w.pivot.visible = !ins)); pm.root.visible = true; } }
 function cycleCam() {
-  camMode = (camMode + 1) % 4; if (player) player.model.root.visible = camMode !== 1;
+  camMode = (camMode + 1) % 4; if (player) player.model.root.visible = true;
   if (camMode === 3 && player) { orbA = player.a + Math.PI; orbP = .35; orbSnap = true; banner("Огляд 360°: крути пальцем екран, двома пальцями — наближення", 2600); }
-  lookYaw = lookPitch = 0;
+  lookYaw = lookPitch = 0; camNear();
 }
 /* вільний огляд: перетягуй пальцем по екрану (поза кнопками) */
 let lookYaw = 0, lookPitch = 0, lookRel = 0, orbA = 0, orbP = .35, orbD = 9, orbSnap = false;
@@ -515,10 +517,13 @@ function updateCamera(dt) {
     camera.position.copy(camPos); camLook.set(p.x, p.y + .8, p.z); camera.lookAt(camLook);
     camFov = lerp(camFov, 52, Math.min(1, dt * 5));
   } else if (camMode === 1) {
-    const fx = Math.cos(p.a), fz = Math.sin(p.a);
-    camera.position.set(p.x + fx * (p.spec.L / 2 - .1), p.y + .78 + Math.abs(Math.sin(t * 40)) * .005 * sp / 60, p.z + fz * (p.spec.L / 2 - .1));
-    camera.rotation.order = "YXZ"; camera.rotation.set(-p.pitch * .6, -p.a - Math.PI / 2, -p.roll * .5);
-    camFov = lerp(camFov, 70 + sp * .22 + (boost ? 8 : 0), Math.min(1, dt * 5));
+    const fx = Math.cos(p.a), fz = Math.sin(p.a), m = p.model, eye = EYE[p.spec.id] || [0, 0];
+    if (m.hasInt) {
+      const ex = eye[0], ez = eye[1] * m.W, ey = m.H * (eye[2] || .8), rx = -fz, rz = fx;
+      camera.position.set(p.x + fx * ex + rx * ez, p.y + ey + Math.abs(Math.sin(t * 40)) * .004 * sp / 60, p.z + fz * ex + rz * ez);
+    } else camera.position.set(p.x + fx * (p.spec.L / 2 - .1), p.y + .78 + Math.abs(Math.sin(t * 40)) * .005 * sp / 60, p.z + fz * (p.spec.L / 2 - .1));
+    camera.rotation.order = "YXZ"; camera.rotation.set(-p.pitch * .6 - (m.hasInt ? .1 : 0), -p.a - Math.PI / 2 - lookYaw * .8 + p.steerS * .05, -p.roll * .5);
+    camFov = lerp(camFov, 74 + sp * .16 + (boost ? 8 : 0), Math.min(1, dt * 5));
   } else {
     let dirA = p.a; if (sp > 7) { const va = Math.atan2(p.vz, p.vx); dirA = p.a + angDiff(p.a, va) * .35; }
     camYaw += angDiff(camYaw, dirA) * Math.min(1, dt * 4.2);

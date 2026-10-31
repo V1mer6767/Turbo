@@ -16,7 +16,8 @@ export function ensureCar(id) {
   if (tpl[id]) return Promise.resolve(true);
   if (!MODEL_FILE[id]) return Promise.resolve(false);
   return pend[id] || (pend[id] = new Promise(res => {
-    loader.load("models/" + MODEL_FILE[id] + ".glb", g => { try { tpl[id] = prepare(g); res(true); } catch (e) { console.warn(e); res(false); } }, undefined, e => { console.warn("model", id, e); pend[id] = null; res(false); });
+    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + "_int.glb", g => { g.scene.traverse(o => { if (o.isMesh) o.frustumCulled = true; }); r(g.scene); }, undefined, () => r(null)));
+    loader.load("models/" + MODEL_FILE[id] + ".glb", g => { intP.then(is => { try { tpl[id] = prepare(g); tpl[id].int = is; res(true); } catch (e) { console.warn(e); res(false); } }); }, undefined, e => { console.warn("model", id, e); pend[id] = null; res(false); });
   }));
 }
 
@@ -34,6 +35,7 @@ export function buildGLB(spec, color, envI, shadow = true) {
     if (c.material.name === "glass") c.renderOrder = 2;
   });
   const body = t.scene.getObjectByName("body").clone(true); fix(body, shadow); tilt.add(body);
+  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ic = nb.clone(true); fix(ic, false); tilt.add(ic); const cl = new THREE.PointLight(0xfff0e0, 14, 5, 2); cl.position.set(-.1, H * .78, 0); tilt.add(cl); } }
   const wheels = []; let rs = 0;
   for (const q of ["fl", "fr", "rl", "rr"]) {
     const n = t.scene.getObjectByName("wheel_" + q), w = meta.wheels && meta.wheels[q]; if (!n || !w) continue;
@@ -46,5 +48,5 @@ export function buildGLB(spec, color, envI, shadow = true) {
   }
   const fm = new THREE.MeshBasicMaterial({ color: 0x66aaff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }), flames = [];
   for (const s of [-1, 1]) { const f = new THREE.Mesh(new THREE.ConeGeometry(.12, 1.2, 8), fm); f.rotation.z = Math.PI / 2; f.position.set(-L / 2 - .6, .38, s * Wd * .27); tilt.add(f); flames.push(f); }
-  return { root, tilt, paint, tail, wheels, flames, fm, L, W: Wd, wr: rs / Math.max(1, wheels.length) };
+  return { root, tilt, body, paint, H, hasInt: !!(shadow && t.int), tail, wheels, flames, fm, L, W: Wd, wr: rs / Math.max(1, wheels.length) };
 }
