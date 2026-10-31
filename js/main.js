@@ -253,7 +253,7 @@ function spawn(mode) {
       const sp = CARS.find(x => x.id === S.car) || CARS[0];
       c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
-      const base = CARS[(Math.random() * CARS.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
+      const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : CARS, base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
       const sp = { ...base, vmax: vm, acc: 8.5 + def.diff * 1.8 + (mul - 1) * 8, mu: 1.3 + def.diff * .06, brake: 12.5 };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
       c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.93, 1), lane: rnd(-3, 3), surf });
