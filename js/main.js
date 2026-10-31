@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 12;
+const BUILD = 13;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -55,7 +55,7 @@ document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target
 /* ---------------- стан ---------------- */
 let W = null, T = null, scene = null, curTrack = -1, envRT = null;
 let cars = [], player = null, state = "loading", raceT = 0, countT = 0, countShown = -1, laps = 3, finishTimer = 0, camMode = 0, demoT = 0;
-let fxS = -1, fxN = false, freeKind = null, prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
+let fpsHold = 0, fxS = -1, fxN = false, freeKind = null, prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
 let skidMesh = null, skHead = 0, skCount = 0, skDirty = false, partPts = null, partMat = null;
 const SKN = 2600, PN = 180;
 const STEP = 1 / 90;
@@ -464,7 +464,7 @@ function snapCamera() {
   camera.position.copy(camPos); camLook.set(player.x, player.y + 1.2, player.z); camera.lookAt(camLook);
 }
 const EYE = { city: [-.1, -.2, .84], sport: [-.1, -.2, .84], muscle: [-.1, -.2, .82], gt: [-.5, -.2, .88], hyper: [-.1, -.2, .84] };
-function camNear() { document.body.classList.toggle("cock", camMode === 1); camera.near = camMode === 1 ? .1 : .3; camera.updateProjectionMatrix(); if (player) { const pm = player.model, ins = camMode === 1 && pm.hasInt; pm.body.visible = !ins; pm.wheels.forEach(w => (w.pivot.visible = !ins)); pm.root.visible = true; } }
+function camNear() { document.body.classList.toggle("cock", camMode === 1); camera.near = camMode === 1 ? .2 : .3; fpsHold = performance.now() + 3000; fpsAcc = fpsN = 0; camera.updateProjectionMatrix(); if (player) { const pm = player.model, ins = camMode === 1 && pm.hasInt; pm.body.visible = !ins; pm.wheels.forEach(w => (w.pivot.visible = !ins)); pm.root.visible = true; } }
 function cycleCam() {
   camMode = (camMode + 1) % 4; if (player) player.model.root.visible = true;
   if (camMode === 3 && player) { orbA = player.a + Math.PI; orbP = .35; orbSnap = true; banner("Огляд 360°: крути пальцем екран, двома пальцями — наближення", 2600); }
@@ -728,8 +728,10 @@ function frame(now) {
   if (interp) restoreInterp();
   // динамічна роздільність
   if (state === "race" || state === "free") {
-    fpsAcc += dt; fpsN++; if (fpsN >= 40) { const avg = fpsAcc / fpsN; fpsAcc = fpsN = 0; if (fpsCool > 0) fpsCool--; else if (avg > 1 / 48 && prScale > .5) { prScale *= .85; applySize(); fpsCool = 2; } }
+    if (performance.now() < fpsHold) { fpsAcc = fpsN = 0; }
+    else { fpsAcc += dt; fpsN++; if (fpsN >= 40) { const avg = fpsAcc / fpsN; fpsAcc = fpsN = 0; if (fpsCool > 0) fpsCool--; else if (avg > 1 / 45 && prScale > .6) { prScale *= .88; applySize(); fpsCool = 3; } else if (avg < 1 / 57 && prScale < 1) { prScale = Math.min(1, prScale / .88); applySize(); fpsCool = 3; } } }
   }
+
 }
 
 document.addEventListener("visibilitychange", () => { if (document.hidden && (state === "race" || state === "free")) { prevState = state; state = "paused"; show("sPause"); } });
