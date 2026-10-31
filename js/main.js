@@ -366,7 +366,7 @@ function updateCamera(dt) {
   const t = performance.now() / 1000;
   if (state === "menu" || state === "garage") {
     const tgt = state === "garage" && prevModel ? prevModel.root.position : (cars[0] ? { x: cars[0].x, y: cars[0].y, z: cars[0].z } : { x: 0, y: 0, z: 0 });
-    const ang = state === "garage" ? garageT * .45 : t * .12, rad = state === "garage" ? 9.2 : 16, hgt = state === "garage" ? 2.2 : 4.5;
+    const ang = state === "garage" ? garageT * .45 : t * .12, rad = state === "garage" ? 6.6 : 16, hgt = state === "garage" ? 1.7 : 4.5;
     const wx = tgt.x + Math.cos(ang) * rad, wz = tgt.z + Math.sin(ang) * rad;
     camera.position.set(wx, Math.max(tgt.y + hgt, W.H(wx, wz, -1) + 1.5), wz); camera.lookAt(tgt.x, tgt.y + (state === "garage" ? -.75 : 1), tgt.z);
     camFov = lerp(camFov, state === "garage" ? 38 : 55, Math.min(1, dt * 4)); camera.fov = camFov; camera.updateProjectionMatrix(); return;
@@ -460,6 +460,7 @@ function garageModel() {
   const mk = () => {
     if (prevModel) scene.remove(prevModel.root);
     prevModel = createCarModel(sp, S.colors[sp.id] || sp.color, W.th.env); scene.add(prevModel.root);
+    { const gl = new THREE.PointLight(0xffffff, 90, 30, 2); gl.position.set(2, 5, 3); prevModel.root.add(gl); }
     const k = 14, x = T.x[k], z = T.z[k], y = T.h[k]; prevModel.root.position.set(x, y, z); prevModel.root.rotation.y = -Math.atan2(T.tz[k], T.tx[k]);
   };
   if (hasCar(sp.id) || !MODEL_FILE[sp.id]) mk();
