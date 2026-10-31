@@ -5,7 +5,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 4;
+const BUILD = 5;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -287,7 +287,7 @@ function spawn(mode) {
       const sp = { ...base, vmax: Math.min(vm, P.vmax * f * rnd(.97, 1.01)), acc: Math.min(8.5 + def.diff * 1.8 + (mul - 1) * 8, P.acc * (f - .05)), mu: Math.min(1.3 + def.diff * .06, P.mu * (f + .02)), brake: Math.min(12.5, P.brake) };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
       c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.9, .98), lane: rnd(-3, 3), surf });
-      c.skillBase = c.skill;
+      c.skillBase = c.skill; c.pA = rnd(.05, .085); c.pP = rnd(13, 26); c.pph = rnd(0, 6.28); c.qA = rnd(.02, .035); c.qP = rnd(5, 9); c.qph = rnd(0, 6.28);
     }
     const g = gridPos(k); c.place(T, Math.round(g.idx), g.lat, W.H); c.pi = c.idx; c.lap = 0; c.lapStart = 0; c.cheat = 0;
     if (mode === "demo") { c.lap = 1; }
@@ -363,7 +363,9 @@ function rubber(dt) {
   if (!player) return; ordCache = order();
   for (const c of cars) if (c !== player && c.skillBase) {
     const d = (c.progress - player.progress) * T.step;
-    c.skill = c.skillBase * (d > 260 ? .9 : d > 120 ? .95 : d < -200 ? 1.02 : 1);
+    const rb = d > 260 ? .9 : d > 120 ? .95 : d < -200 ? 1.02 : 1;
+    const tt = raceT, pace = 1 + c.pA * Math.sin(tt / c.pP * 6.283 + c.pph) + c.qA * Math.sin(tt / c.qP * 6.283 + c.qph);   // то швидше, то повільніше
+    c.skill = c.skillBase * rb * pace;
   }
 }
 function racePlace(c) { return ordCache.indexOf(c) + 1; }

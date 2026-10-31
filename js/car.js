@@ -216,8 +216,10 @@ export function aiInput(c, T, cars, dt, racing) {
     if (ahead > 2 && ahead < 16 + sp * .25 && Math.abs(side) < 2.6 && o.speed < c.speed + 6) avoid = side > 0 ? -1 : 1;
   }
   const maxL = T.halfW - 2.2;
+  c.laneT = (c.laneT === undefined ? Math.random() * 5 : c.laneT) - dt;   // кожен їде своєю лінією і час від часу міняє її
+  if (c.laneT <= 0) { c.laneT = 4 + Math.random() * 7; c.lane0 = (Math.random() * 2 - 1) * maxL * .85; }
   const target = clamp(c.lane0 + avoid * 3.2, -maxL, maxL);
-  c.lane += clamp(target - c.lane, -3 * dt, 3 * dt);
+  c.lane += clamp(target - c.lane, -1.8 * dt, 1.8 * dt);
   const look = 3 + Math.floor(sp / 8), ti = (c.idx + look) % M;
   const tx = T.x[ti] + T.nx[ti] * c.lane, tz = T.z[ti] + T.nz[ti] * c.lane;
   const err = angDiff(c.a, Math.atan2(tz - c.z, tx - c.x));
