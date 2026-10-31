@@ -42,13 +42,12 @@ function applySize() {
 addEventListener("resize", applySize); addEventListener("orientationchange", () => setTimeout(applySize, 120));
 /* на телефоні: на весь екран і горизонтально; без виділення тексту */
 let fsTried = false;
-addEventListener("pointerdown", () => {
+document.addEventListener("click", () => {
   if (fsTried || !coarse) return; fsTried = true;
   const el = document.documentElement;
   if (el.requestFullscreen) el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {});
-}, { once: false });
+});
 for (const ev of ["selectstart", "contextmenu", "dragstart", "gesturestart", "copy", "cut"]) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
-document.addEventListener("touchstart", e => { if (e.target.closest && e.target.closest("#ctl,#hud,#gl")) e.preventDefault(); }, { passive: false });
 document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target.closest(".cards,.setList,.resList")) e.preventDefault(); }, { passive: false });
 
 /* ---------------- стан ---------------- */
@@ -359,7 +358,8 @@ function snapCamera() {
   camera.position.copy(camPos); camLook.set(player.x, player.y + 1.2, player.z); camera.lookAt(camLook);
 }
 function cycleCam() { camMode = (camMode + 1) % 3; if (player) player.model.root.visible = camMode !== 1; }
-$("#bCam").onclick = cycleCam;
+function onTap(el, fn) { let t = 0; const go = e => { const n = performance.now(); if (n - t < 350) return; t = n; fn(e); }; el.addEventListener("pointerup", go); el.addEventListener("click", go); }
+onTap($("#bCam"), cycleCam);
 function updateCamera(dt) {
   const t = performance.now() / 1000;
   if (state === "menu" || state === "garage") {
@@ -484,7 +484,7 @@ function togglePause() {
 }
 let prevState = "race";
 function resume() { state = prevState; hideAll(); }
-$("#bPause").onclick = () => { if (state === "race" || state === "count") { prevState = state; state = "paused"; show("sPause"); } };
+onTap($("#bPause"), () => { if (state === "race" || state === "count") { prevState = state; state = "paused"; show("sPause"); } });
 $("#pResume").onclick = resume;
 $("#pRestart").onclick = () => startRace(curTrack);
 $("#pMenu").onclick = () => toMenu("sMain");
