@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>TURBO — гонки</title>
+<meta name="theme-color" content="#0b0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TURBO">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div id="hud" hidden>
+  <div id="hPos"><b>6</b><span>/6</span></div>
+  <div id="hLap">Коло 1/3</div>
+  <div id="hTime">0:00.00</div>
+  <canvas id="mini" width="280" height="280"></canvas>
+  <div id="hSpeed"><b>0</b><i>км/год</i><span id="hGear">1</span></div>
+  <div id="hNitro"><div></div></div>
+  <button id="bPause" class="mini">❚❚</button>
+  <button id="bCam" class="mini">📷</button>
+</div>
+
+<div id="ctl" hidden>
+  <button class="c steer" data-k="left">◀</button>
+  <button class="c steer" data-k="right">▶</button>
+  <button class="c pedal" data-k="gas" id="cGas">ГАЗ</button>
+  <button class="c pedal brake" data-k="brake">СТОП</button>
+  <button class="c small" data-k="drift">ДРИФТ</button>
+  <button class="c small nitro" data-k="nitro">НІТРО</button>
+</div>
+
+<div id="count" hidden></div>
+<div id="banner" hidden></div>
+<div id="flash"></div>
+
+<div class="screen" id="sLoad"><div class="logo">TURBO</div><div class="sub" id="loadTxt">Завантаження…</div><div class="spin"></div></div>
+
+<div class="screen shade" id="sMain" hidden>
+  <div class="logo big">TURBO<span>RACING</span></div>
+  <div class="coins">🪙 <b id="mCoins">0</b></div>
+  <div class="menu">
+    <button class="btn main" id="mPlay">Гонка</button>
+    <button class="btn" id="mGarage">Гараж</button>
+    <button class="btn" id="mSet">Налаштування</button>
+  </div>
+  <div class="ver" id="ver"></div>
+</div>
+
+<div class="screen shade" id="sTracks" hidden>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Обери трасу</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="cards" id="trackList"></div>
+</div>
+
+<div class="screen" id="sGarage" hidden>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2 id="gName">Гараж</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="garBottom">
+    <div class="carTabs" id="carTabs"></div>
+    <div class="stats" id="gStats"></div>
+    <div class="swatches" id="swatches"></div>
+    <button class="btn main" id="gAct">Обрати</button>
+  </div>
+</div>
+
+<div class="screen shade" id="sSet" hidden>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Налаштування</h2><span></span></div>
+  <div class="setList" id="setList"></div>
+</div>
+
+<div class="screen shade" id="sPause" hidden>
+  <h2 class="big2">Пауза</h2>
+  <div class="menu">
+    <button class="btn main" id="pResume">Продовжити</button>
+    <button class="btn" id="pRestart">Заново</button>
+    <button class="btn" id="pMenu">В меню</button>
+  </div>
+</div>
+
+<div class="screen shade" id="sRes" hidden>
+  <h2 class="big2" id="rTitle">1 місце</h2>
+  <div class="resList" id="rList"></div>
+  <div class="resInfo" id="rInfo"></div>
+  <div class="menu row">
+    <button class="btn main" id="rAgain">Ще раз</button>
+    <button class="btn" id="rMenu">В меню</button>
+  </div>
+</div>
+
+<div id="rotate" hidden>Поверни телефон горизонтально для найкращого вигляду</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
