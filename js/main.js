@@ -2,11 +2,11 @@ import * as THREE from "../vendor/three.module.min.js";
 import { TRACK_DEFS, nearest, clamp, lerp, angDiff } from "./trackmath.js";
 import { buildWorld, makeSky } from "./world.js";
 import { buildArena, ARENAS } from "./arena.js";
-import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide } from "./car.js";
+import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide, UPS, UP_MAX, upCost, stageOf, tuned } from "./car.js";
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 28;
+const BUILD = 29;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -59,6 +59,7 @@ let W = null, T = null, scene = null, curTrack = -1, envRT = null;
 let cars = [], player = null, state = "loading", raceT = 0, countT = 0, countShown = -1, laps = 3, finishTimer = 0, camMode = 0, demoT = 0;
 let fpsHold = 0, fxS = -1, fxN = false, freeKind = null, prevModel = null, garageT = 0, bot = false, wrongT = 0, resultsData = null;
 let skidMesh = null, skHead = 0, skCount = 0, skDirty = false, partPts = null, partMat = null;
+const playerSpec = () => { const g = inst(S.sel); return tuned(CARS.find(x => x.id === g.id) || CARS[0], g.up); };
 const SKN = 2600, PN = 180;
 const STEP = 1 / 90;
 const track = () => TRACK_DEFS[curTrack];
@@ -110,12 +111,12 @@ function playerInput() {
   let steer = (R ? 1 : 0) - (L ? 1 : 0);
   if (S.tilt && tiltOn) { const v = Math.abs(tiltV) < .05 ? 0 : tiltV; steer = clamp(v / .6, -1, 1); if (L || R) steer = (R ? 1 : 0) - (L ? 1 : 0); }
   const brake = !!(btn.brake || keys.ArrowDown || keys.KeyS);
-  const gas = S.auto ? !brake : !!(btn.gas || keys.ArrowUp || keys.KeyW);
+  const gas = (S.auto && freeKind !== "drag") ? !brake : !!(btn.gas || keys.ArrowUp || keys.KeyW);
   return { steer, gas: gas || !!(keys.ArrowUp || keys.KeyW), brake, assist: S.assist, drift: !!(btn.drift || keys.Space), nitro: !!(btn.nitro || keys.ShiftLeft || keys.ShiftRight) };
 }
 
 /* ---------------- екрани ---------------- */
-const SCREENS = ["sLoad", "sMain", "sTracks", "sFree", "sGarage", "sSet", "sPause", "sRes"];
+const SCREENS = ["sLoad", "sMain", "sTracks", "sFree", "sGarage", "sSet", "sPause", "sRes", "sDrag", "sDragRes"];
 function show(id) { SCREENS.forEach(s => $("#" + s).hidden = s !== id); }
 function hideAll() { SCREENS.forEach(s => $("#" + s).hidden = true); }
 $$("[data-back]").forEach(b => b.addEventListener("click", () => toMenu(b.dataset.back)));
@@ -130,6 +131,7 @@ async function toMenu(id = "sMain") {
   show(id); updCoins();
   if (id === "sTracks") buildTrackList();
   if (id === "sFree") buildFreeList();
+  if (id === "sDrag") buildDragList();
   if (id === "sSet") buildSettings();
 }
 function enterMenu() {
@@ -139,6 +141,8 @@ function enterMenu() {
 $("#mPlay").onclick = () => { A.audioInit(); toMenu("sTracks"); };
 $("#mFree").onclick = () => { A.audioInit(); toMenu("sFree"); };
 $("#mGarage").onclick = () => { A.audioInit(); enterGarage("garage"); };
+$("#mDrag").onclick = () => { A.audioInit(); toMenu("sDrag"); };
+$("#mWork").onclick = () => { A.audioInit(); enterGarage("work"); };
 $("#mShop").onclick = () => { A.audioInit(); enterGarage("shop"); };
 $("#mSet").onclick = () => toMenu("sSet");
 
@@ -157,7 +161,7 @@ function buildTrackList() {
 function buildFreeList() {
   const el = $("#freeList"); el.innerHTML = "";
   const grads = { lot: "linear-gradient(180deg,#28345e,#ff9a58 55%,#6d6f74 56%)", city: "linear-gradient(180deg,#02040c,#243a6a 45%,#ffd98a 46%,#1b2130 70%)" };
-  ARENAS.forEach(a => {
+  ARENAS.filter(a => !a.hidden).forEach(a => {
     const b = document.createElement("button"); b.className = "card";
     b.innerHTML = `<div class="pic" style="background:${grads[a.id]}"></div><div class="t"><h3>${a.name}</h3><p>${a.sub}</p><div class="row"><span>Дрифт = очки і монети</span><span>🏆 ${S.driftBest || 0}</span></div></div>`;
     b.onclick = () => startFree(a.id);
@@ -322,11 +326,11 @@ function spawn(mode) {
     const isP = mode === "race" && k === n - 1;
     let c;
     if (isP) {
-      const sp = CARS.find(x => x.id === S.car) || CARS[0];
+      const sp = playerSpec();
       c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
       const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : (CARS.filter(x => hasCar(x.id)).length ? CARS.filter(x => hasCar(x.id)) : CARS), base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
-      const P = CARS.find(x => x.id === S.car) || CARS[0], f = .84 + (mul - .92) * .6;
+      const P = playerSpec(), f = .84 + (mul - .92) * .6;
       const sp = { ...base, vmax: Math.min(vm, P.vmax * f * rnd(.97, 1.01)), acc: Math.min(8.5 + def.diff * 1.8 + (mul - 1) * 8, P.acc * (f - .05)), mu: Math.min(1.3 + def.diff * .06, P.mu * (f + .02)), brake: Math.min(12.5, P.brake) };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
       c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.9, .98), lane: rnd(-3, 3), surf });
@@ -360,13 +364,13 @@ async function startFree(kind) {
   spawnFree(); drReset(); camNear();
   try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {}
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true;
-  document.body.classList.add("free"); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
+  document.body.classList.remove("drag"); $("#tree").hidden = true; document.body.classList.add("free"); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   state = "free"; snapCamera(); applySize();
   banner("Тисни ДРИФТ і крути кермо — чим довше слайд, тим більше очок", 3200);
 }
 function spawnFree() {
   for (const c of cars) scene.remove(c.model.root);
-  const sp = CARS.find(x => x.id === S.car) || CARS[0];
+  const sp = playerSpec();
   const c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf: 1 }); player = c; cars = [c];
   const city = freeKind === "city";
   c.x = city ? -53 : -30; c.z = city ? 53 : 0; c.a = 0; c.y = 0; c.idx = 0; c.pi = 0; c.lap = 1; c.grid = 0;
@@ -390,14 +394,124 @@ function driftLogic(dt) {
 }
 async function leaveFree() {
   if (!freeKind) return;
-  bankDrift(); freeKind = null; document.body.classList.remove("free");
+  bankDrift(); freeKind = null; document.body.classList.remove("free", "drag"); $("#tree").hidden = true;
   await loadTrack(clamp(S.last | 0, 0, TRACK_DEFS.length - 1));
   state = "loading";
 }
 
+/* ---------------- драг-рейсинг ---------------- */
+const DLEV = [
+  { name: "Новачок", car: "city", mul: .96, prize: 60, react: .42, sub: "Звичайна «Сіті» — гарна розминка" },
+  { name: "Любитель", car: "sport", mul: 1.04, prize: 150, react: .30, sub: "Спорткупе зі стартовою нітрою" },
+  { name: "Професіонал", car: "gt", mul: 1.1, prize: 320, react: .20, sub: "V12 — потрібна прокачана машина" },
+  { name: "Легенда", car: "hyper", mul: 1.22, prize: 800, react: .12, sub: "Гіперкар. Без стейджів не вистачить" }
+];
+const DRG = 402, DX0 = -2.5;
+const drag = { level: 0, phase: 0, t: 0, jit: 0, gT: 0, fs: false, rt: null, bot: null, botGo: 0, res: null, show: 0 };
+function buildDragList() {
+  const el = $("#dragList"); el.innerHTML = "";
+  const sp = playerSpec();
+  DLEV.forEach((d, i) => {
+    const b = document.createElement("button"); b.className = "card";
+    const bs = CARS.find(x => x.id === d.car), best = S.dragBest && S.dragBest[i];
+    b.innerHTML = `<div class="pic" style="background:linear-gradient(180deg,#28345e,#ff9a58 50%,#44474d 51%)"></div><div class="t"><h3>${d.name}</h3><p>${bs.name}: ${d.sub}</p><div class="row"><span>Приз 🪙 ${d.prize}</span><span>${best ? "🏁 " + (best / 1000).toFixed(2) + " с" : "—"}</span></div></div>`;
+    b.onclick = () => startDrag(i);
+    el.appendChild(b);
+  });
+}
+async function startDrag(level) {
+  A.audioInit(); drag.level = level; const L = DLEV[level];
+  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Готуємо стріп…"; await new Promise(r => setTimeout(r, 40));
+  disposeWorld(); const q = qual(); renderer.shadowMap.enabled = !!q.shadow;
+  W = buildArena("drag", q); T = W.T; scene = W.scene; curTrack = -1; freeKind = "drag"; miniBg = null;
+  W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
+  const es = new THREE.Scene(); es.add(makeSky(W.th));
+  envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
+  initEffects(); applySize();
+  $("#loadTxt").textContent = "Завантаження машин…"; await Promise.all([ensureCar(S.car), ensureCar(L.car)]);
+  for (const c of cars) scene.remove(c.model.root);
+  const sp = playerSpec(), bs = CARS.find(x => x.id === L.car);
+  const bsp = { ...bs, acc: bs.acc * L.mul, vmax: bs.vmax * (1 + (L.mul - 1) * .5), mu: bs.mu * L.mul };
+  const pc = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf: 1 });
+  const bc = new Car(bsp, { name: "Суперник", color: COLORS[(Math.random() * COLORS.length) | 0], surf: 1 });
+  player = pc; cars = [pc, bc]; drag.bot = bc;
+  pc.x = -pc.spec.L / 2 - .25; bc.x = -bc.spec.L / 2 - .25; pc.z = -3.6; bc.z = 3.6; for (const c of cars) { c.a = 0; c.y = 0; c.idx = 0; c.pi = 0; c.lap = 1; c.grid = 0; c.dFin = null; c.dStart = null; c.dSpd = 0; addModel(c, W.th, W.th.lamps); }
+  bc.nitro = level >= 2 ? .9 : .4;
+  drag.phase = 1; drag.t = 0; drag.jit = .1 + Math.random() * .6; drag.gT = 0; drag.fs = false; drag.rt = null; drag.res = null; drag.show = 0; drag.botGo = L.react + Math.random() * .12;
+  syncAll(.016); camNear();
+  try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {}
+  hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true;
+  document.body.classList.add("free", "drag"); document.body.classList.remove("auto"); document.body.classList.toggle("tilt", S.tilt);
+  $$("#tree i").forEach(i => i.className = i.classList.contains("g") ? "g" : ""); $("#tree").hidden = false;
+  state = "free"; snapCamera(); applySize();
+  banner("Утримуй ГАЗ і рушай на зелене. НІТРО — для ривка", 3000);
+}
+function dragInput(c, pin) {
+  const laneZ = c === player ? -3.6 : 3.6;
+  const hold = (steer, gas, brake, nitro) => ({ steer, gas, brake, drift: false, nitro: !!nitro, assist: false });
+  const keep = clamp(-(c.z - laneZ) * .18 - angDiff(0, c.a) * 1.6, -1, 1);
+  if (c.dFin !== null) return hold(keep, false, true, false);
+  if (drag.phase === 1) return hold(c === player ? pin.steer : keep, false, false, false);
+  if (c === player) return pin;
+  const t = drag.t;
+  return hold(keep, t > drag.botGo, false, t > drag.botGo + 1.1 && t < drag.botGo + 2.6 && c.nitro > .25);
+}
+function dragLogic(dt) {
+  const p = player; if (!p) return;
+  if (drag.phase === 1) {
+    drag.t += dt; const t = drag.t, tr = $$("#tree i");
+    const n = t > 2.0 ? 3 : t > 1.5 ? 2 : t > 1.0 ? 1 : 0;
+    tr.forEach((el, i) => { if (i < 3) el.className = i < n ? "on" : ""; });
+    const g = 2.0 + drag.jit + .5;
+    const pressed = !!(btn.gas || keys.ArrowUp || keys.KeyW);
+    if (pressed && t < g && !drag.fs) { drag.fs = true; tr[3].className = "g r"; banner("ФАЛЬСТАРТ! +1.5 с штрафу", 1800); }
+    if (t >= g) { tr[0].className = tr[1].className = tr[2].className = "on"; tr[3].className = drag.fs ? "g r" : "g on"; if (drag.fs) { tr[3].className = "g on"; } drag.phase = 2; drag.gT = drag.t; drag.t = 0; A.beep(1040, .35, .2); drag.show = 0; }
+    return;
+  }
+  drag.t += dt;
+  if (drag.phase === 2) {
+    if (drag.rt === null && (btn.gas || keys.ArrowUp || keys.KeyW)) drag.rt = drag.t;
+    for (const c of cars) {
+      if (c.dStart === null && c.speed > .4) c.dStart = drag.t;
+      const dist = c.x + c.spec.L / 2;
+      if (c.dFin === null && dist >= DRG) { const el = drag.t; c.dFin = el; c.dSpd = c.speed * 3.6; if (c === player) { A.beep(990, .4, .2); flash(); } }
+    }
+    if (player.dFin !== null || (drag.bot.dFin !== null && drag.bot.dFin + 5 < drag.t)) {
+      if (player.dFin !== null && drag.show === 0) drag.show = drag.t + 2.2;
+      if (drag.bot.dFin !== null && drag.bot.dFin + 5 < drag.t && player.dFin === null) { player.dFin = drag.t; player.dSpd = player.speed * 3.6; drag.show = drag.t + .3; }
+    }
+    if (drag.show && drag.t > drag.show) dragResults();
+  }
+}
+function dragResults() {
+  drag.phase = 3; const p = player, b = drag.bot, L = DLEV[drag.level];
+  const pt = p.dFin + (drag.fs ? 1.5 : 0), bt = b.dFin === null ? 999 : b.dFin;
+  const win = pt < bt;
+  const pET = p.dFin - (p.dStart || 0) + (drag.fs ? 1.5 : 0), bET = b.dFin === null ? 0 : b.dFin - (b.dStart || 0);
+  const pay = win ? L.prize : Math.round(L.prize * .12); S.coins += pay;
+  S.dragBest = S.dragBest || {}; let rec = false;
+  if (win && (!S.dragBest[drag.level] || pET * 1000 < S.dragBest[drag.level])) { S.dragBest[drag.level] = Math.round(pET * 1000); rec = true; }
+  S.dragWins = (S.dragWins | 0) + (win ? 1 : 0); save(); updCoins();
+  $("#drTitle").textContent = win ? "🏆 Перемога!" : "Програш";
+  $("#drBox").innerHTML = `Ти: <b>${pET.toFixed(2)} с</b> · ${Math.round(p.dSpd)} км/год${drag.fs ? " · фальстарт +1.5 с" : ""}<br>Суперник (${L.name}): <b>${b.dFin === null ? "—" : bET.toFixed(2) + " с"}</b> · ${Math.round(b.dSpd)} км/год<br>Реакція: ${drag.rt === null ? "—" : drag.rt.toFixed(2) + " с"}<br>Нагорода: <b>+${pay} 🪙</b>${rec ? "<br><b>Новий рекорд!</b>" : ""}`;
+  state = "free"; $("#hud").hidden = true; $("#ctl").hidden = true; $("#tree").hidden = true; show("sDragRes");
+}
+$("#drAgain").onclick = () => startDrag(drag.level);
+$("#drOther").onclick = () => toMenu("sDrag");
+$("#drMenu").onclick = () => toMenu("sMain");
+function hudDrag() {
+  const p = player; if (!p) return;
+  $("#hSpeed b").textContent = Math.round(p.speed * 3.6); $("#hGear").textContent = p.vf < -.5 ? "R" : p.gear;
+  const nb = $("#hNitro"); nb.firstElementChild.style.width = Math.round(p.nitro * 100) + "%"; nb.classList.toggle("on", p.boostT > 0);
+  const d = $("#hDrift"); d.classList.remove("act");
+  const pd = Math.max(0, Math.min(DRG, p.x + p.spec.L / 2)), bd = Math.max(0, Math.min(DRG, drag.bot.x + drag.bot.spec.L / 2));
+  const tm = drag.phase >= 2 ? (p.dFin !== null ? p.dFin : drag.t) : 0;
+  d.innerHTML = `<small>ДРАГ · ${DLEV[drag.level].name}</small><b>${tm.toFixed(2)}</b><div class="tot">Ти ${Math.round(pd)} м · Суперник ${Math.round(bd)} м / ${DRG} м</div>`;
+}
+
 /* ---------------- гонка ---------------- */
 async function startRace(ti) {
-  A.audioInit(); if (freeKind) { bankDrift(); document.body.classList.remove("free"); }
+  A.audioInit(); if (freeKind) { bankDrift(); document.body.classList.remove("free", "drag"); $("#tree").hidden = true; }
   if (ti !== curTrack || freeKind) await loadTrack(ti);
   state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Завантаження машин…"; await new Promise(r => setTimeout(r, 30));
   await Promise.all(CARS.slice(0, CARS.findIndex(x => x.id === S.car) + 1).map(c => ensureCar(c.id)));
@@ -437,7 +551,8 @@ function physStep(dt) {
   const pin = playerInput();
   for (const c of cars) {
     let inp;
-    if (c === player && !c.finished && !bot) inp = pin;
+    if (freeKind === "drag") inp = dragInput(c, pin);
+    else if (c === player && !c.finished && !bot) inp = pin;
     else inp = aiInput(c, T, cars, dt, racing);
     if (c === player && !racing) inp = { hold: true };
     c.thr = inp.gas;
@@ -450,7 +565,7 @@ function physStep(dt) {
   }
   if (hit > .08) { A.thud(hit); camShake = Math.max(camShake, hit * .5); }
   if (player && player.bump > .05) { A.thud(player.bump); camShake = Math.max(camShake, player.bump * .6); }
-  if (state === "free") driftLogic(dt);
+  if (state === "free") { if (freeKind === "drag") dragLogic(dt); else driftLogic(dt); }
   else if (state === "race" || state === "finish") { raceT += dt; for (const c of cars) lapLogic(c); }
   else if (state === "menu") for (const c of cars) c.pi = c.idx;
 }
@@ -617,14 +732,14 @@ let gSel = null, gMode = "garage", gUid = null, shopColor = null;
 const inst = uid => S.garage.find(g => g.uid === uid) || S.garage[0];
 function applySel() { const g = inst(S.sel); S.car = g.id; S.owned = [...new Set(S.garage.map(x => x.id))]; if (g.color) S.colors[g.id] = g.color; else delete S.colors[g.id]; }
 function enterGarage(mode) {
-  gMode = mode === "shop" ? "shop" : "garage";
+  gMode = mode === "shop" ? "shop" : mode === "work" ? "work" : "garage"; document.body.classList.toggle("work", gMode === "work");
   state = "garage"; garageT = 0; shopColor = null;
-  if (gMode === "garage") { gUid = S.sel; gSel = inst(gUid).id; } else gSel = S.car;
+  if (gMode !== "shop") { gUid = S.sel; gSel = inst(gUid).id; } else gSel = S.car;
   show("sGarage"); $("#hud").hidden = true; $("#ctl").hidden = true;
   for (const c of cars) c.model.root.visible = false;
   garageModel(); garageUI(); updCoins();
 }
-function leaveGarage() { if (prevModel) { scene.remove(prevModel.root); prevModel = null; } for (const c of cars) c.model.root.visible = true; }
+function leaveGarage() { document.body.classList.remove("work"); if (prevModel) { scene.remove(prevModel.root); prevModel = null; } for (const c of cars) c.model.root.visible = true; }
 const shopPrice = sp => sp.price || 300;
 function gColor(sp) { return gMode === "shop" ? (shopColor || sp.color) : (inst(gUid).color || sp.color); }
 function garageModel() {
@@ -641,12 +756,22 @@ function garageModel() {
 }
 function garageUI() {
   const shop = gMode === "shop", sp = CARS.find(x => x.id === gSel);
-  $("#gName").textContent = (shop ? "Автосалон · " : "Гараж · ") + sp.name + " · " + sp.desc;
+  const work = gMode === "work", gi = inst(gUid);
+  $("#gName").textContent = (shop ? "Автосалон · " : work ? "Майстерня · " : "Гараж · ") + sp.name + (work ? " · Stage " + stageOf(gi.up) : " · " + sp.desc);
   const tabs = $("#carTabs"); tabs.innerHTML = "";
   if (shop) CARS.forEach(c => { const n = S.garage.filter(g => g.id === c.id).length, b = document.createElement("button"); b.className = "tab" + (c.id === gSel ? " on" : ""); b.innerHTML = `${c.name}<small>🪙 ${shopPrice(c)}${n ? " · у вас " + n : ""}</small>`; b.onclick = () => { gSel = c.id; shopColor = null; garageModel(); garageUI(); }; tabs.appendChild(b); });
-  else S.garage.forEach(g => { const c = CARS.find(x => x.id === g.id), same = S.garage.filter(x => x.id === g.id), b = document.createElement("button"); b.className = "tab" + (g.uid === gUid ? " on" : ""); b.innerHTML = `${c.name}${same.length > 1 ? " #" + (same.indexOf(g) + 1) : ""}<small>${S.sel === g.uid ? "обрана" : "є"}</small>`; b.onclick = () => { gUid = g.uid; gSel = g.id; garageModel(); garageUI(); }; tabs.appendChild(b); });
+  else S.garage.forEach(g => { const c = CARS.find(x => x.id === g.id), same = S.garage.filter(x => x.id === g.id), b = document.createElement("button"); b.className = "tab" + (g.uid === gUid ? " on" : ""); b.innerHTML = `${c.name}${same.length > 1 ? " #" + (same.indexOf(g) + 1) : ""}<small>${S.sel === g.uid ? "обрана" : "є"}${stageOf(g.up) ? " · St." + stageOf(g.up) : ""}</small>`; b.onclick = () => { gUid = g.uid; gSel = g.id; garageModel(); garageUI(); }; tabs.appendChild(b); });
   const bar = (n, v) => `<div class="stat"><b>${n}</b><div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div></div>`;
-  $("#gStats").innerHTML = bar("Швидкість", (sp.vmax - 40) / 50) + bar("Розгін", (sp.acc - 6) / 11) + bar("Зчеплення", (sp.mu - .8) / .6);
+  const ts = shop ? sp : tuned(sp, gi.up);
+  $("#gStats").innerHTML = bar("Швидкість", (ts.vmax - 40) / 50) + bar("Розгін", (ts.acc - 6) / 11) + bar("Зчеплення", (ts.mu - .8) / .6);
+  const ul = $("#upList"); ul.innerHTML = "";
+  if (work) UPS.forEach(u => {
+    const lv = (gi.up && gi.up[u.k]) | 0, max = lv >= UP_MAX, cost = upCost(sp, lv), d = document.createElement("div"); d.className = "up";
+    d.innerHTML = `<b>${u.name}</b><span class="pips">${"●".repeat(lv)}${"○".repeat(UP_MAX - lv)}</span><small>${u.desc}</small>`;
+    const bt = document.createElement("button"); bt.textContent = max ? "МАКС" : "Купити · 🪙 " + cost; bt.disabled = max || S.coins < cost;
+    bt.onclick = () => { if (max || S.coins < cost) return; S.coins -= cost; gi.up = Object.assign({}, gi.up, { [u.k]: lv + 1 }); save(); updCoins(); garageUI(); };
+    d.appendChild(bt); ul.appendChild(d);
+  });
   const sw = $("#swatches"); sw.innerHTML = "";
   COLORS.forEach(c => { const b = document.createElement("button"); b.className = "sw" + (gColor(sp) === c ? " on" : ""); b.style.background = c; b.onclick = () => { if (shop) shopColor = c; else { inst(gUid).color = c; if (S.sel === gUid) applySel(); save(); } if (prevModel) setCarColor(prevModel, c); garageUI(); }; sw.appendChild(b); });
   const act = $("#gAct");
@@ -673,7 +798,7 @@ let prevState = "race";
 function resume() { state = prevState; hideAll(); }
 onTap($("#bPause"), () => { if (state === "race" || state === "count" || state === "free") { prevState = state; state = "paused"; show("sPause"); } });
 $("#pResume").onclick = resume;
-$("#pRestart").onclick = () => { if (freeKind) { const k = freeKind; bankDrift(); startFree(k); } else startRace(curTrack); };
+$("#pRestart").onclick = () => { if (freeKind === "drag") startDrag(drag.level); else if (freeKind) { const k = freeKind; bankDrift(); startFree(k); } else startRace(curTrack); };
 $("#pMenu").onclick = () => toMenu("sMain");
 $("#rAgain").onclick = () => startRace(curTrack);
 $("#rMenu").onclick = () => toMenu("sMain");
@@ -744,7 +869,7 @@ function frame(now) {
     const f = state === "garage" && prevModel ? prevModel.root.position : cars[0];
     W.sun.target.position.set(f.x, f.y, f.z); W.sun.position.set(f.x + W.sun.userData.dx, f.y + W.sun.userData.dy, f.z + W.sun.userData.dz); W.sun.target.updateMatrixWorld();
   }
-  if (player && (state === "race" || state === "count" || state === "finish")) hud(dt); else if (state === "free") hudFree();
+  if (player && (state === "race" || state === "count" || state === "finish")) hud(dt); else if (state === "free") { if (freeKind === "drag") hudDrag(); else hudFree(); }
   { const on = player && (state === "race" || state === "free" || state === "finish"), v = on ? clamp((player.speed * 3.6 - 130) / 170, 0, 1) * .75 + (player.boostT > 0 ? .35 : 0) : 0, r = Math.round(Math.min(1, v) * 20) / 20;
     if (r !== fxS) { fxS = r; $("#fxSpd").style.opacity = r; } const nt = on && player.boostT > 0; if (nt !== fxN) { fxN = nt; document.body.classList.toggle("nit", nt); } }
   A.audioFrame(player, state === "race" || state === "finish" || state === "free" ? true : (state === "count" ? "idle" : false));
@@ -782,5 +907,5 @@ boot().then(async () => { for (const id of Object.keys(MODEL_FILE)) await ensure
 window.__g = {
   get state() { return state; }, get player() { return player; }, get cars() { return cars; }, get T() { return T; }, get scene() { return scene; },
   advance(sec) { const n = Math.round(sec / STEP); for (let i = 0; i < n; i++) { if (state === "count") { countT -= STEP; if (countT <= 1) { state = "race"; raceT = 0; } } physStep(STEP); if (i % 30 === 0) rubber(); if (state === "finish") { finishTimer -= STEP; if (finishTimer <= 0) { showResults(); break; } } } syncAll(.016); },
-  setBot(v) { bot = v; }, snap() { snapCamera(); camera.fov = camFov = 60; camera.updateProjectionMatrix(); }, startRace, startFree, loadTrack, setCam(m) { camMode = m; }, get raceT() { return raceT; }, enterGarage, place: () => racePlace(player)
+  get drag() { return drag; }, setBot(v) { bot = v; }, snap() { snapCamera(); camera.fov = camFov = 60; camera.updateProjectionMatrix(); }, startRace, startFree, loadTrack, setCam(m) { camMode = m; }, get raceT() { return raceT; }, enterGarage, place: () => racePlace(player)
 };

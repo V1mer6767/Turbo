@@ -4,7 +4,8 @@ import { THEMES, makeSky } from "./world.js";
 
 export const ARENAS = [
   { id: "lot", name: "Велика парковка", sub: "Порожній майданчик, конуси, шини, контейнери", theme: "sunset", half: 350 },
-  { id: "city", name: "Нічне місто", sub: "Квартали, перехрестя, неонові вікна", theme: "night", half: 262 }
+  { id: "city", name: "Нічне місто", sub: "Квартали, перехрестя, неонові вікна", theme: "night", half: 262 },
+  { id: "drag", name: "Драг-стріп", sub: "Чверть милі", theme: "sunset", half: 520, hidden: true }
 ];
 
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -93,6 +94,33 @@ export function buildArena(kind, quality) {
     // далекі будівлі
     const bg = mat(0x6d727c, .95);
     for (let i = 0; i < 36; i++) { const a = i / 36 * 6.2832, r = half + rnd(40, 160), h = rnd(18, 60); const b = new THREE.Mesh(new THREE.BoxGeometry(rnd(30, 60), h, rnd(30, 60)), bg); b.position.set(Math.cos(a) * r, h / 2, Math.sin(a) * r); root.add(b); }
+  } else if (kind === "drag") {
+    floor.visible = false;
+    const SL = 640, SW = 17, strip = canvasTex(1024, 64, (g, w, h) => {
+      g.fillStyle = "#3a3d43"; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 9000; i++) { const v = 45 + Math.random() * 45 | 0; g.fillStyle = `rgba(${v},${v},${v + 4},${Math.random() * .5})`; g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+      g.fillStyle = "#e8e8e8"; g.fillRect(0, 2, w, 3); g.fillRect(0, h - 5, w, 3);
+      g.fillStyle = "#d8d27a"; for (let x = 0; x < w; x += 40) g.fillRect(x, h / 2 - 1.5, 22, 3);
+    });
+    const sm = new THREE.Mesh(new THREE.PlaneGeometry(SL, SW), new THREE.MeshStandardMaterial({ map: strip, roughness: .9 }));
+    sm.rotation.x = -Math.PI / 2; sm.position.set(250, .02, 0); sm.receiveShadow = true; root.add(sm);
+    // стартова лінія і фініш (402 м від старту x=-2.5)
+    const sl = new THREE.Mesh(new THREE.PlaneGeometry(.7, SW - 1), new THREE.MeshBasicMaterial({ color: 0xffffff })); sl.rotation.x = -Math.PI / 2; sl.position.set(0, .04, 0); root.add(sl);
+    const chk = canvasTex(64, 256, (g, w, h) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 4; x++) { g.fillStyle = (x + y) & 1 ? "#fff" : "#111"; g.fillRect(x * 16, y * 16, 16, 16); } });
+    const fl = new THREE.Mesh(new THREE.PlaneGeometry(2.4, SW - 1), new THREE.MeshBasicMaterial({ map: chk })); fl.rotation.x = -Math.PI / 2; fl.rotation.z = Math.PI / 2; fl.position.set(402, .04, 0); root.add(fl);
+    // відбійники
+    const jm = mat(0x9a9c9f, .95);
+    for (const sz of [-1, 1]) addBox(250, sz * (SW / 2 + .4), SL, 1.0, .7, jm);
+    addBox(-72, 0, 1, 1.4, SW, jm); addBox(572, 0, 1, 1.4, SW, jm);
+    // арка фінішу і табло
+    const pm2 = mat(0xcfd2d8, .5, .4);
+    for (const sz of [-1, 1]) { const m = new THREE.Mesh(new THREE.BoxGeometry(.6, 8, .6), pm2); m.position.set(402, 4, sz * (SW / 2 + 1.2)); root.add(m); }
+    const arch = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.4, SW + 3), mat(0xd0262b, .5)); arch.position.set(402, 8.2, 0); root.add(arch);
+    // трибуни з одного боку, ліхтарі з обох
+    const st = mat(0x555a66, .9), cr = [mat(0xd04a3a), mat(0x3a6fd0), mat(0xe8c14a), mat(0x4aa86a)];
+    for (let i = 0; i < 6; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(34, 3 + i % 2, 10), st); b.position.set(60 + i * 62, 2, 20); b.castShadow = shadow; root.add(b); for (let k = 0; k < 14; k++) { const f = new THREE.Mesh(new THREE.BoxGeometry(.7, 1.3, .7), cr[(k + i) & 3]); f.position.set(60 + i * 62 - 15 + k * 2.2, 4.4 + i % 2, 20 - 2 + (k & 1)); root.add(f); } }
+    for (let x = -40; x <= 520; x += 70) { poles.push([x, -SW / 2 - 4]); poles.push([x, SW / 2 + 4]); }
+    for (let i = 0; i < 30; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(rnd(20, 40), rnd(14, 40), rnd(20, 40)), mat(0x6d727c, .95)); b.position.set(rnd(-120, 640), 0, (i & 1 ? 1 : -1) * rnd(90, 220)); b.position.y = b.geometry.parameters.height / 2; root.add(b); }
   } else {
     // місто: дороги і квартали
     const P = 106, N = 2;

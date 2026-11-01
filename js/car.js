@@ -93,6 +93,22 @@ export function createCarModel(spec, color, envI = 1, shadow = true) {
 }
 export function setCarColor(m, color) { m.paint.color.set(color); }
 
+/* ---------------- прокачка (майстерня) ---------------- */
+export const UPS = [
+  { k: "eng", name: "Двигун", desc: "+потужність, +макс. швидкість" },
+  { k: "tire", name: "Шини і підвіска", desc: "+зчеплення на треку" },
+  { k: "gear", name: "Трансмісія · драг", desc: "+розгін, трохи менша макс." },
+  { k: "drift", name: "Дрифт-кіт", desc: "легше зривати в занос" }
+];
+export const UP_MAX = 3;
+export const upCost = (sp, lvl) => Math.round((250 + sp.price * .3) * Math.pow(1.9, lvl) / 10) * 10;
+export const stageOf = up => up ? UPS.reduce((a, u) => a + (up[u.k] | 0), 0) : 0;
+export function tuned(sp, up) {
+  if (!up) return sp;
+  const e = up.eng | 0, t = up.tire | 0, g = up.gear | 0, d = up.drift | 0;
+  return Object.assign({}, sp, { acc: sp.acc * (1 + .07 * e + .1 * g), vmax: sp.vmax * (1 + .035 * e - .02 * g), mu: sp.mu * (1 + .05 * t - .02 * d), dr: 1 + .25 * d });
+}
+
 /* ---------------- фізика ---------------- */
 export class Car {
   constructor(spec, opts = {}) {
@@ -130,13 +146,13 @@ export function stepCar(c, inp, dt, T, H) {
   const sp = Math.abs(vf);
   const geo = sp * Math.tan(.55 * s.steer) / WB, dyn = aMax * .97 / Math.max(sp, 5);
   let yaw = c.steerS * Math.min(geo, dyn) * (vf < -.5 ? -1 : 1);
-  if (drift) yaw *= 1.4;
+  if (drift) yaw *= 1.4 * (s.dr || 1);
   c.a += yaw * dt;
   fx = Math.cos(c.a); fz = Math.sin(c.a);
   const rx = -fz, rz = fx;
   vf = c.vx * fx + c.vz * fz; let vr = c.vx * rx + c.vz * rz;
   const vr0 = vr;
-  const k = (drift ? 1.3 : 8.5) * (off ? .55 : 1) * (c.surf < 1 ? .85 : 1);
+  const k = (drift ? 1.3 / (s.dr || 1) : 8.5) * (off ? .55 : 1) * (c.surf < 1 ? .85 : 1);
   vr *= Math.exp(-k * dt);
   const keep = vf * vf + (vr0 * vr0 - vr * vr) * (drift ? .75 : 1);
   vf = Math.sign(vf || 1) * Math.sqrt(Math.max(0, keep));

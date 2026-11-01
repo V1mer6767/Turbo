@@ -41,6 +41,7 @@
 </div>
 
 <div id="count" hidden></div>
+<div id="tree" hidden><i></i><i></i><i></i><i class="g"></i></div>
 <div id="banner" hidden></div>
 <div id="flash"></div>
 
@@ -49,11 +50,13 @@
 <div class="screen shade" id="sMain" hidden>
   <div class="logo big">TURBO<span>RACING</span></div>
   <div class="coins">🪙 <b id="mCoins">0</b></div>
-  <div class="menu">
+  <div class="menu grid">
     <button class="btn main" id="mPlay">Гонка</button>
+    <button class="btn" id="mDrag">Драг-рейсинг</button>
     <button class="btn" id="mFree">Вільна їзда · дрифт</button>
     <button class="btn" id="mGarage">Гараж</button>
     <button class="btn" id="mShop">Автосалон</button>
+    <button class="btn" id="mWork">Майстерня</button>
     <button class="btn" id="mSet">Налаштування</button>
   </div>
   <div class="ver" id="ver"></div>
@@ -69,12 +72,28 @@
   <div class="cards" id="freeList"></div>
 </div>
 
+<div class="screen shade" id="sDrag" hidden>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Драг-рейсинг · чверть милі</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="cards" id="dragList"></div>
+</div>
+
+<div class="screen shade" id="sDragRes" hidden>
+  <h2 class="big2" id="drTitle">Результат</h2>
+  <div class="drBox" id="drBox"></div>
+  <div class="menu row">
+    <button class="btn main" id="drAgain">Ще раз</button>
+    <button class="btn" id="drOther">Суперники</button>
+    <button class="btn" id="drMenu">В меню</button>
+  </div>
+</div>
+
 <div class="screen" id="sGarage" hidden>
   <div class="head"><button class="back" data-back="sMain">‹</button><h2 id="gName">Гараж</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
   <div class="garBottom">
     <div class="carTabs" id="carTabs"></div>
     <div class="stats" id="gStats"></div>
     <div class="swatches" id="swatches"></div>
+    <div class="upList" id="upList"></div>
     <button class="btn main" id="gAct">Обрати</button>
   </div>
 </div>
