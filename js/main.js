@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 17;
+const BUILD = 18;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -201,6 +201,14 @@ function buildSettings() {
   r.innerHTML = `<div>Оновити гру<small>Підтягнути нову версію (збереження лишаться)</small></div><div class="opts"><button id="stRef">Оновити</button></div>`;
   el.appendChild(r); $("#stRef").onclick = hardRefresh;
 }
+async function checkUpdate() {
+  try {
+    const r = await fetch("version.json?" + Date.now(), { cache: "no-store" }); if (!r.ok) return;
+    const j = await r.json();
+    if (j.build > BUILD) { if (!sessionStorage.getItem("updTry" + j.build)) { sessionStorage.setItem("updTry" + j.build, "1"); hardRefresh(); } else $("#ver").textContent = "v" + BUILD + " → є v" + j.build + " (Налаштування → Оновити)"; }
+  } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && state === "menu") checkUpdate(); });
 async function hardRefresh() {
   try {
     if ("serviceWorker" in navigator) (await navigator.serviceWorker.getRegistrations()).forEach(r => r.unregister());
@@ -740,7 +748,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden && (st
 async function boot() {
   applySize(); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   if (S.tilt) enableTilt();
-  $("#ver").textContent = "v" + BUILD;
+  $("#ver").textContent = "v" + BUILD; checkUpdate();
   A.setSound(S.sound);
   await loadTrack(clamp(S.last | 0, 0, TRACK_DEFS.length - 1));
   $("#loadTxt").textContent = "Завантаження машин…"; await ensureCar(S.car);
