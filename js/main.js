@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 22;
+const BUILD = 23;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -471,7 +471,7 @@ function snapCamera() {
   camPos.set(player.x - Math.cos(camYaw) * b, player.y + 2.6, player.z - Math.sin(camYaw) * b);
   camera.position.copy(camPos); camLook.set(player.x, player.y + 1.2, player.z); camera.lookAt(camLook);
 }
-const EYE = { city: [-.1, -.2, .68], sport: [-.1, -.2, .70], muscle: [-.1, -.2, .82], gt: [-.5, -.2, .88], hyper: [-.1, -.2, .84] };
+const EYE = { city: [-.1, -.2, .77], sport: [-.1, -.2, .78], muscle: [-.1, -.2, .82], gt: [-.5, -.2, .88], hyper: [-.1, -.2, .84] };
 function camNear() { document.body.classList.toggle("cock", camMode === 1); camera.near = camMode === 1 ? .2 : .3; fpsHold = performance.now() + 3000; fpsAcc = fpsN = 0; camera.updateProjectionMatrix(); if (player) { const pm = player.model, ins = camMode === 1 && pm.hasInt; pm.body.visible = !ins; pm.wheels.forEach(w => (w.pivot.visible = !ins)); pm.root.visible = true; } }
 function cycleCam() {
   camMode = (camMode + 1) % 4; if (player) player.model.root.visible = true;
@@ -530,7 +530,7 @@ function updateCamera(dt) {
       const ex = eye[0], ez = eye[1] * m.W, ey = m.H * (eye[2] || .8), rx = -fz, rz = fx;
       camera.position.set(p.x + fx * ex + rx * ez, p.y + ey + Math.abs(Math.sin(t * 40)) * .004 * sp / 60, p.z + fz * ex + rz * ez);
     } else camera.position.set(p.x + fx * (p.spec.L / 2 - .1), p.y + .78 + Math.abs(Math.sin(t * 40)) * .005 * sp / 60, p.z + fz * (p.spec.L / 2 - .1));
-    camera.rotation.order = "YXZ"; camera.rotation.set(-p.pitch * .6 - (m.hasInt ? .1 : 0), -p.a - Math.PI / 2 - lookYaw * .8 + p.steerS * .05, -p.roll * .5);
+    camera.rotation.order = "YXZ"; camera.rotation.set(-p.pitch * .6 - (m.hasInt ? .03 : 0), -p.a - Math.PI / 2 - lookYaw * .8 + p.steerS * .05, -p.roll * .5);
     camFov = lerp(camFov, 74 + sp * .16 + (boost ? 8 : 0), Math.min(1, dt * 5));
   } else {
     let dirA = p.a; if (sp > 7) { const va = Math.atan2(p.vz, p.vx); dirA = p.a + angDiff(p.a, va) * .35; }
