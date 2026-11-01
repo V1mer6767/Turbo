@@ -22,8 +22,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 #hNitro div{height:100%;width:30%;background:linear-gradient(90deg,#4aa8ff,#9be3ff);border-radius:6px}
 #hNitro.on div{background:linear-gradient(90deg,#ffb347,#fff0a0)}
 .mini{position:absolute;width:42px;height:42px;border-radius:50%;background:rgba(0,0,0,.45);font-size:16px;display:grid;place-items:center;right:max(14px,env(safe-area-inset-right))}
-#bPause{top:calc(max(10px,env(safe-area-inset-top)) + 122px)}
-#bCam{top:calc(max(10px,env(safe-area-inset-top)) + 172px)}
+#bPause{top:max(14px,env(safe-area-inset-top));right:calc(max(14px,env(safe-area-inset-right)) + 126px)}
+#bCam{top:max(14px,env(safe-area-inset-top));right:calc(max(14px,env(safe-area-inset-right)) + 176px)}
 
 /* ---- керування ---- */
 #ctl{position:fixed;inset:0;pointer-events:none}
