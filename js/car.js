@@ -102,11 +102,13 @@ export const UPS = [
 ];
 export const UP_MAX = 3;
 export const upCost = (sp, lvl) => Math.round((250 + sp.price * .3) * Math.pow(1.9, lvl) / 10) * 10;
+export const HP = { city: 460, sport: 510, muscle: 650, gt: 780, hyper: 900 };
+export const hpOf = (sp, up) => Math.round((HP[sp.id] || 400) * (1 + .1 * ((up && up.eng) | 0)));
 export const stageOf = up => up ? UPS.reduce((a, u) => a + (up[u.k] | 0), 0) : 0;
 export function tuned(sp, up) {
   if (!up) return sp;
   const e = up.eng | 0, t = up.tire | 0, g = up.gear | 0, d = up.drift | 0;
-  return Object.assign({}, sp, { acc: sp.acc * (1 + .07 * e + .1 * g), vmax: sp.vmax * (1 + .035 * e - .02 * g), mu: sp.mu * (1 + .05 * t - .02 * d), dr: 1 + .25 * d });
+  return Object.assign({}, sp, { acc: sp.acc * (1 + .12 * e + .1 * g), vmax: sp.vmax * (1 + .06 * e - .02 * g), mu: sp.mu * (1 + .05 * t - .02 * d), dr: 1 + .25 * d });
 }
 
 /* ---------------- фізика ---------------- */

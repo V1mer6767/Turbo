@@ -2,11 +2,11 @@ import * as THREE from "../vendor/three.module.min.js";
 import { TRACK_DEFS, nearest, clamp, lerp, angDiff } from "./trackmath.js";
 import { buildWorld, makeSky } from "./world.js";
 import { buildArena, ARENAS } from "./arena.js";
-import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide, UPS, UP_MAX, upCost, stageOf, tuned } from "./car.js";
+import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide, UPS, UP_MAX, upCost, stageOf, tuned, hpOf } from "./car.js";
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 29;
+const BUILD = 30;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -764,6 +764,8 @@ function garageUI() {
   const bar = (n, v) => `<div class="stat"><b>${n}</b><div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div></div>`;
   const ts = shop ? sp : tuned(sp, gi.up);
   $("#gStats").innerHTML = bar("Швидкість", (ts.vmax - 40) / 50) + bar("Розгін", (ts.acc - 6) / 11) + bar("Зчеплення", (ts.mu - .8) / .6);
+  const hb = $("#hpBox"), hp0 = hpOf(sp, null), hp1 = hpOf(sp, shop ? null : gi.up);
+  hb.innerHTML = `<b>${hp1} hp</b>${hp1 > hp0 ? `<em>+${hp1 - hp0}</em>` : ""}<small>Макс. ${Math.round(ts.vmax * 3.6)} км/год</small><small>Розгін ×${(ts.acc / sp.acc).toFixed(2)}</small>`;
   const ul = $("#upList"); ul.innerHTML = "";
   if (work) UPS.forEach(u => {
     const lv = (gi.up && gi.up[u.k]) | 0, max = lv >= UP_MAX, cost = upCost(sp, lv), d = document.createElement("div"); d.className = "up";

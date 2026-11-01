@@ -144,3 +144,8 @@ body.work .swatches,body.work #gAct{display:none}
 .up button{margin-top:2px;padding:6px 8px;border-radius:9px;background:linear-gradient(180deg,#ff5252,#d92b2b);font-weight:800;font-size:12px;touch-action:manipulation}
 .up button[disabled]{opacity:.45;background:rgba(255,255,255,.15)}
 body.drag .c[data-k="drift"]{display:none}
+
+#hpBox{position:absolute;left:max(16px,env(safe-area-inset-left));top:76px;padding:10px 14px;border-radius:14px;background:rgba(0,0,0,.5);display:flex;flex-direction:column;gap:2px;z-index:3}
+#hpBox b{font-size:26px;font-weight:900;letter-spacing:.5px}
+#hpBox em{font-style:normal;color:#2ee86a;font-weight:800;font-size:13px}
+#hpBox small{font-size:11px;opacity:.8}
