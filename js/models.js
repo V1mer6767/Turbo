@@ -34,6 +34,29 @@ export function ensureCar(id) {
   }));
 }
 
+/* власне кермо для M5: у джерелі воно «биту» геометрію */
+function roundel() {
+  const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d");
+  g.fillStyle = "#111"; g.beginPath(); g.arc(64, 64, 62, 0, 7); g.fill(); g.fillStyle = "#e8e8e8"; g.beginPath(); g.arc(64, 64, 52, 0, 7); g.fill();
+  for (const [a, col] of [[0, "#1c69d4"], [Math.PI / 2, "#e8e8e8"], [Math.PI, "#1c69d4"], [Math.PI * 1.5, "#e8e8e8"]]) { g.fillStyle = col; g.beginPath(); g.moveTo(64, 64); g.arc(64, 64, 46, a, a + Math.PI / 2); g.fill(); }
+  g.strokeStyle = "#111"; g.lineWidth = 3; g.beginPath(); g.moveTo(14, 64); g.lineTo(114, 64); g.moveTo(64, 14); g.lineTo(64, 114); g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const EXTRA = {
+  city(tilt, sm, L, Wd, H) {
+    const leather = new THREE.MeshStandardMaterial({ color: 0x15130f, roughness: .5, metalness: 0 }), trim = new THREE.MeshStandardMaterial({ color: 0xb9bcc2, roughness: .25, metalness: .9 });
+    const n = new THREE.Vector3(sm.nx, sm.ny, 0).normalize();
+    const root = new THREE.Group(); root.position.set(.624, .87, -.38); root.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), n); tilt.add(root);
+    const wheel = new THREE.Group(); root.add(wheel);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(.178, .019, 14, 48), leather); wheel.add(rim);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(.062, .07, .05, 28), leather); hub.rotation.x = Math.PI / 2; wheel.add(hub);
+    const cap = new THREE.Mesh(new THREE.CircleGeometry(.05, 28), new THREE.MeshStandardMaterial({ map: roundel(), roughness: .3 })); cap.position.z = .027; wheel.add(cap);
+    for (const a of [Math.PI, 0, -Math.PI / 2]) { const sp = new THREE.Mesh(new THREE.BoxGeometry(.12, .034, .02), leather); sp.position.set(Math.cos(a) * .11, Math.sin(a) * .11, 0); sp.rotation.z = a; wheel.add(sp); }
+    for (const sd of [-1, 1]) { const bt = new THREE.Mesh(new THREE.BoxGeometry(.05, .035, .012), trim); bt.position.set(sd * .1, .035, .016); wheel.add(bt); }
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(.04, .045, .3, 16), leather); col.rotation.x = Math.PI / 2; col.position.z = -.17; root.add(col);
+    return { wheel };
+  }
+};
 export function buildGLB(spec, color, envI, shadow = true) {
   const t = tpl[spec.id], meta = t.meta, L = meta.length, Wd = meta.width, H = meta.height;
   const root = new THREE.Group(); root.rotation.order = "YZX";
@@ -49,7 +72,10 @@ export function buildGLB(spec, color, envI, shadow = true) {
   });
   let steerObj = null, steerAx = null;
   const body = t.scene.getObjectByName("body").clone(true); fix(body, shadow); tilt.add(body);
-  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ic = nb.clone(true); fix(ic, false); tilt.add(ic); const sn = t.int.getObjectByName("steer"), sm = t.int.userData.car && t.int.userData.car.steer; if (sn && sm) { steerObj = sn.clone(true); fix(steerObj, false); tilt.add(steerObj); steerAx = new THREE.Vector3(sm.nx, sm.ny, 0).normalize(); } const cl = new THREE.PointLight(0xfff0e0, 14, 5, 2); cl.position.set(-.1, H * .78, 0); tilt.add(cl); } }
+  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ic = nb.clone(true); fix(ic, false); tilt.add(ic); const sn = t.int.getObjectByName("steer"), sm = t.int.userData.car && t.int.userData.car.steer; if (sn && sm) {
+          if (EXTRA[spec.id]) { const ex = EXTRA[spec.id](tilt, sm, L, Wd, H); steerObj = ex.wheel; steerAx = null; }
+          else { steerObj = sn.clone(true); fix(steerObj, false); tilt.add(steerObj); steerAx = new THREE.Vector3(sm.nx, sm.ny, 0).normalize(); }
+        } const cl = new THREE.PointLight(0xfff0e0, 14, 5, 2); cl.position.set(-.1, H * .78, 0); tilt.add(cl); } }
   const wheels = []; let rs = 0;
   for (const q of ["fl", "fr", "rl", "rr"]) {
     const n = t.scene.getObjectByName("wheel_" + q), w = meta.wheels && meta.wheels[q]; if (!n || !w) continue;
