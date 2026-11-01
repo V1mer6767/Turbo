@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 27;
+const BUILD = 28;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -14,6 +14,8 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const SK = "turbo_v1";
 let S = { driftBest: 0, driftTotal: 0, coins: 0, owned: ["city"], car: "city", colors: {}, best: {}, bestLap: {}, sound: true, auto: true, quality: "mid", diff: 1, laps: 3, assist: true, last: 0, tilt: false, tiltInv: /iPhone|iPad|iPod/.test(navigator.userAgent) };
 try { Object.assign(S, JSON.parse(localStorage.getItem(SK) || "{}")); } catch (e) {}
+if (!S.garage) { S.garage = (S.owned || ["city"]).map(id => ({ uid: id, id, color: (S.colors || {})[id] || null })); S.sel = S.car; }
+if (!S.garage.some(g => g.uid === S.sel)) S.sel = S.garage[0].uid;
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
 const QUAL = {
   low: { pr: 1, shadow: 0, trees: 450, terrainCell: 10, treeShadow: false },
@@ -136,7 +138,8 @@ function enterMenu() {
 }
 $("#mPlay").onclick = () => { A.audioInit(); toMenu("sTracks"); };
 $("#mFree").onclick = () => { A.audioInit(); toMenu("sFree"); };
-$("#mGarage").onclick = () => { A.audioInit(); enterGarage(); };
+$("#mGarage").onclick = () => { A.audioInit(); enterGarage("garage"); };
+$("#mShop").onclick = () => { A.audioInit(); enterGarage("shop"); };
 $("#mSet").onclick = () => toMenu("sSet");
 
 function buildTrackList() {
@@ -610,19 +613,26 @@ function hud(dt) {
 }
 
 /* ---------------- гараж ---------------- */
-let gSel = null;
-function enterGarage() {
-  state = "garage"; garageT = 0; gSel = S.car; show("sGarage"); $("#hud").hidden = true; $("#ctl").hidden = true;
+let gSel = null, gMode = "garage", gUid = null, shopColor = null;
+const inst = uid => S.garage.find(g => g.uid === uid) || S.garage[0];
+function applySel() { const g = inst(S.sel); S.car = g.id; S.owned = [...new Set(S.garage.map(x => x.id))]; if (g.color) S.colors[g.id] = g.color; else delete S.colors[g.id]; }
+function enterGarage(mode) {
+  gMode = mode === "shop" ? "shop" : "garage";
+  state = "garage"; garageT = 0; shopColor = null;
+  if (gMode === "garage") { gUid = S.sel; gSel = inst(gUid).id; } else gSel = S.car;
+  show("sGarage"); $("#hud").hidden = true; $("#ctl").hidden = true;
   for (const c of cars) c.model.root.visible = false;
   garageModel(); garageUI(); updCoins();
 }
 function leaveGarage() { if (prevModel) { scene.remove(prevModel.root); prevModel = null; } for (const c of cars) c.model.root.visible = true; }
+const shopPrice = sp => sp.price || 300;
+function gColor(sp) { return gMode === "shop" ? (shopColor || sp.color) : (inst(gUid).color || sp.color); }
 function garageModel() {
   if (prevModel) scene.remove(prevModel.root);
   const sp = CARS.find(x => x.id === gSel);
   const mk = () => {
     if (prevModel) scene.remove(prevModel.root);
-    prevModel = createCarModel(sp, S.colors[sp.id] || sp.color, W.th.env); scene.add(prevModel.root);
+    prevModel = createCarModel(sp, gColor(sp), W.th.env); scene.add(prevModel.root);
     { const gl = new THREE.PointLight(0xffffff, 90, 30, 2); gl.position.set(2, 5, 3); prevModel.root.add(gl); }
     const k = 14, x = T.x[k], z = T.z[k], y = T.h[k]; prevModel.root.position.set(x, y, z); prevModel.root.rotation.y = -Math.atan2(T.tz[k], T.tx[k]);
   };
@@ -630,21 +640,27 @@ function garageModel() {
   else { if (prevModel) prevModel.root.visible = false; ensureCar(sp.id).then(() => { if (gSel === sp.id && state === "garage") mk(); }); }
 }
 function garageUI() {
-  const sp = CARS.find(x => x.id === gSel), owned = S.owned.includes(sp.id);
-  $("#gName").textContent = sp.name + " · " + sp.desc;
+  const shop = gMode === "shop", sp = CARS.find(x => x.id === gSel);
+  $("#gName").textContent = (shop ? "Автосалон · " : "Гараж · ") + sp.name + " · " + sp.desc;
   const tabs = $("#carTabs"); tabs.innerHTML = "";
-  CARS.forEach(c => { const b = document.createElement("button"); b.className = "tab" + (c.id === gSel ? " on" : ""); b.innerHTML = `${c.name}<small>${S.owned.includes(c.id) ? (S.car === c.id ? "ваша" : "є") : "🪙 " + c.price}</small>`; b.onclick = () => { gSel = c.id; garageModel(); garageUI(); }; tabs.appendChild(b); });
+  if (shop) CARS.forEach(c => { const n = S.garage.filter(g => g.id === c.id).length, b = document.createElement("button"); b.className = "tab" + (c.id === gSel ? " on" : ""); b.innerHTML = `${c.name}<small>🪙 ${shopPrice(c)}${n ? " · у вас " + n : ""}</small>`; b.onclick = () => { gSel = c.id; shopColor = null; garageModel(); garageUI(); }; tabs.appendChild(b); });
+  else S.garage.forEach(g => { const c = CARS.find(x => x.id === g.id), same = S.garage.filter(x => x.id === g.id), b = document.createElement("button"); b.className = "tab" + (g.uid === gUid ? " on" : ""); b.innerHTML = `${c.name}${same.length > 1 ? " #" + (same.indexOf(g) + 1) : ""}<small>${S.sel === g.uid ? "обрана" : "є"}</small>`; b.onclick = () => { gUid = g.uid; gSel = g.id; garageModel(); garageUI(); }; tabs.appendChild(b); });
   const bar = (n, v) => `<div class="stat"><b>${n}</b><div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div></div>`;
   $("#gStats").innerHTML = bar("Швидкість", (sp.vmax - 40) / 50) + bar("Розгін", (sp.acc - 6) / 11) + bar("Зчеплення", (sp.mu - .8) / .6);
   const sw = $("#swatches"); sw.innerHTML = "";
-  if (owned) COLORS.forEach(c => { const b = document.createElement("button"); b.className = "sw" + ((S.colors[sp.id] || sp.color) === c ? " on" : ""); b.style.background = c; b.onclick = () => { S.colors[sp.id] = c; save(); if (prevModel) setCarColor(prevModel, c); garageUI(); }; sw.appendChild(b); });
+  COLORS.forEach(c => { const b = document.createElement("button"); b.className = "sw" + (gColor(sp) === c ? " on" : ""); b.style.background = c; b.onclick = () => { if (shop) shopColor = c; else { inst(gUid).color = c; if (S.sel === gUid) applySel(); save(); } if (prevModel) setCarColor(prevModel, c); garageUI(); }; sw.appendChild(b); });
   const act = $("#gAct");
-  if (owned) { act.textContent = S.car === sp.id ? "Обрана ✓" : "Обрати"; act.disabled = S.car === sp.id; }
-  else { act.textContent = "Купити за 🪙 " + sp.price; act.disabled = S.coins < sp.price; }
+  if (shop) { act.textContent = "Купити за 🪙 " + shopPrice(sp); act.disabled = S.coins < shopPrice(sp); }
+  else { act.textContent = S.sel === gUid ? "Обрана ✓" : "Обрати"; act.disabled = S.sel === gUid; }
 }
 $("#gAct").onclick = () => {
   const sp = CARS.find(x => x.id === gSel);
-  if (S.owned.includes(sp.id)) S.car = sp.id; else if (S.coins >= sp.price) { S.coins -= sp.price; S.owned.push(sp.id); S.car = sp.id; }
+  if (gMode === "shop") {
+    if (S.coins < shopPrice(sp)) return;
+    S.coins -= shopPrice(sp); const uid = sp.id + "-" + Date.now().toString(36); S.garage.push({ uid, id: sp.id, color: shopColor || null }); S.sel = uid; applySel(); shopColor = null;
+    save(); updCoins(); enterGarage("garage"); return;
+  }
+  S.sel = gUid; applySel();
   save(); garageUI(); updCoins();
 };
 
