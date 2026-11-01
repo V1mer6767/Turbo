@@ -72,7 +72,7 @@ export function buildGLB(spec, color, envI, shadow = true) {
   });
   let steerObj = null, steerAx = null;
   const body = t.scene.getObjectByName("body").clone(true); fix(body, shadow); tilt.add(body);
-  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ig = new THREE.Group(); tilt.add(ig); if (spec.id === "city" && t.int.userData.car && t.int.userData.car.steer) { const k = 1.03, st = t.int.userData.car.wheels.steer; ig.scale.setScalar(k); ig.position.set(.624 - k * st.x, .87 - k * st.y, -.38 - k * st.z); } const ic = nb.clone(true); fix(ic, false); ig.add(ic); const sn = t.int.getObjectByName("steer"), sm = t.int.userData.car && t.int.userData.car.steer; if (sn && sm) {
+  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ig = new THREE.Group(); tilt.add(ig); if (spec.id === "city" && t.int.userData.car && t.int.userData.car.steer) { const k = 1.03, st = t.int.userData.car.wheels.steer; ig.scale.setScalar(k); ig.position.set(.42 - k * st.x, .87 - k * st.y, -.38 - k * st.z); } const ic = nb.clone(true); fix(ic, false); ig.add(ic); const sn = t.int.getObjectByName("steer"), sm = t.int.userData.car && t.int.userData.car.steer; if (sn && sm) {
           { steerObj = sn.clone(true); fix(steerObj, false); ig.add(steerObj); steerAx = new THREE.Vector3(sm.nx, sm.ny, 0).normalize(); }
         } const cl = new THREE.PointLight(0xfff0e0, 14, 5, 2); cl.position.set(-.1, H * .78, 0); tilt.add(cl); } }
   const wheels = []; let rs = 0;
