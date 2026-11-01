@@ -29,7 +29,7 @@ export function ensureCar(id) {
   if (tpl[id]) return Promise.resolve(true);
   if (!MODEL_FILE[id]) return Promise.resolve(false);
   return pend[id] || (pend[id] = new Promise(res => {
-    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + (id === "city" ? "_i5" : "_i3") + ".glb", g => { g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = true; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (/glass|glas|window|wind/i.test(m.name)) clearGlass(m); } }); if (TRIM[id]) trimY(g.scene, TRIM[id]); r(g.scene); }, undefined, () => r(null)));
+    const intP = new Promise(r => loader.load("models/" + (id === "city" ? "m4" : MODEL_FILE[id]) + "_i3.glb", g => { g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = true; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (/glass|glas|window|wind/i.test(m.name)) clearGlass(m); } }); if (TRIM[id]) trimY(g.scene, TRIM[id]); r(g.scene); }, undefined, () => r(null)));
     loader.load("models/" + MODEL_FILE[id] + ".glb", g => { intP.then(is => { try { tpl[id] = prepare(g); tpl[id].int = is; res(true); } catch (e) { console.warn(e); res(false); } }); }, undefined, e => { console.warn("model", id, e); pend[id] = null; res(false); });
   }));
 }
@@ -72,9 +72,8 @@ export function buildGLB(spec, color, envI, shadow = true) {
   });
   let steerObj = null, steerAx = null;
   const body = t.scene.getObjectByName("body").clone(true); fix(body, shadow); tilt.add(body);
-  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ic = nb.clone(true); fix(ic, false); tilt.add(ic); const sn = t.int.getObjectByName("steer"), sm = t.int.userData.car && t.int.userData.car.steer; if (sn && sm) {
-          if (EXTRA[spec.id]) { const ex = EXTRA[spec.id](tilt, sm, L, Wd, H); steerObj = ex.wheel; steerAx = null; }
-          else { steerObj = sn.clone(true); fix(steerObj, false); tilt.add(steerObj); steerAx = new THREE.Vector3(sm.nx, sm.ny, 0).normalize(); }
+  if (shadow && t.int) { const nb = t.int.getObjectByName("body"); if (nb) { const ig = new THREE.Group(); tilt.add(ig); if (spec.id === "city" && t.int.userData.car && t.int.userData.car.steer) { const k = 1.03, st = t.int.userData.car.wheels.steer; ig.scale.setScalar(k); ig.position.set(.624 - k * st.x, .87 - k * st.y, -.38 - k * st.z); } const ic = nb.clone(true); fix(ic, false); ig.add(ic); const sn = t.int.getObjectByName("steer"), sm = t.int.userData.car && t.int.userData.car.steer; if (sn && sm) {
+          { steerObj = sn.clone(true); fix(steerObj, false); ig.add(steerObj); steerAx = new THREE.Vector3(sm.nx, sm.ny, 0).normalize(); }
         } const cl = new THREE.PointLight(0xfff0e0, 14, 5, 2); cl.position.set(-.1, H * .78, 0); tilt.add(cl); } }
   const wheels = []; let rs = 0;
   for (const q of ["fl", "fr", "rl", "rr"]) {
