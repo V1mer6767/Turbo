@@ -138,13 +138,13 @@ export function stepCar(c, inp, dt, T, H) {
   const vr0 = vr;
   const k = (drift ? 1.3 : 8.5) * (off ? .55 : 1) * (c.surf < 1 ? .85 : 1);
   vr *= Math.exp(-k * dt);
-  const keep = vf * vf + (vr0 * vr0 - vr * vr) * (drift ? .75 : .98);
+  const keep = vf * vf + (vr0 * vr0 - vr * vr) * (drift ? .75 : 1);
   vf = Math.sign(vf || 1) * Math.sqrt(Math.max(0, keep));
   // двигун і гальма
   c.braking = false;
   if (inp.gas) { const r = clamp(vf / vmax, 0, 1.3); vf += s.acc * (boost ? 1.7 : 1) * (1 - Math.pow(Math.min(r, 1), 2.4)) * dt; }
   if (vf > vmax) vf -= (vf - vmax) * 2.2 * dt;
-  if (inp.assist && !drift) { const vLim = Math.sqrt(aMax * 220 / clamp(Math.abs(c.steerS), .25, 1)); if (vf > vLim) vf -= ((vf - vLim) * .8 + .3) * dt; }
+  if (inp.assist && !drift) { const vLim = Math.sqrt(aMax * 700 / clamp(Math.abs(c.steerS), .25, 1)); if (vf > vLim) vf -= ((vf - vLim) * .8 + .3) * dt; }
   if (inp.brake) {
     if (vf > .8) { vf = Math.max(0, vf - s.brake * dt); c.braking = true; }
     else vf = Math.max(vf - 4.2 * dt, -9);
