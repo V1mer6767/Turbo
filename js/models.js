@@ -14,7 +14,7 @@ function prepare(g) {
 // лобове/бокове скло в салоні: прозоре, без "мутного" затемнення
 function clearGlass(m) { m.alphaTest = 0; m.transparent = true; m.opacity = .08; m.depthWrite = false; m.transmission = 0; m.roughness = .02; if (m.color) m.color.setRGB(.02, .03, .04); if ("clearcoat" in m) m.clearcoat = 0; m.name = "glass_i"; m.needsUpdate = true; }
 // обрізання зайвого вгорі салону (стеля/шматки стійок), де модель з джерела «битa»
-const TRIM = { city: 1.0 };
+const TRIM = {};
 function trimY(scene, cut) {
   scene.traverse(o => {
     if (!o.isMesh || !o.geometry.index) return;
@@ -29,7 +29,7 @@ export function ensureCar(id) {
   if (tpl[id]) return Promise.resolve(true);
   if (!MODEL_FILE[id]) return Promise.resolve(false);
   return pend[id] || (pend[id] = new Promise(res => {
-    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + "_i3.glb", g => { g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = true; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (/glass|glas|window|wind/i.test(m.name)) clearGlass(m); } }); if (TRIM[id]) trimY(g.scene, TRIM[id]); r(g.scene); }, undefined, () => r(null)));
+    const intP = new Promise(r => loader.load("models/" + MODEL_FILE[id] + (id === "city" ? "_i5" : "_i3") + ".glb", g => { g.scene.traverse(o => { if (o.isMesh) { o.frustumCulled = true; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) if (/glass|glas|window|wind/i.test(m.name)) clearGlass(m); } }); if (TRIM[id]) trimY(g.scene, TRIM[id]); r(g.scene); }, undefined, () => r(null)));
     loader.load("models/" + MODEL_FILE[id] + ".glb", g => { intP.then(is => { try { tpl[id] = prepare(g); tpl[id].int = is; res(true); } catch (e) { console.warn(e); res(false); } }); }, undefined, e => { console.warn("model", id, e); pend[id] = null; res(false); });
   }));
 }
