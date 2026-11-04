@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 33;
+const BUILD = 34;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -320,7 +320,7 @@ function gridPos(k) { return { idx: -(3 + Math.floor(k / 2) * 2), lat: (k % 2 ? 
 function spawn(mode) {
   for (const c of cars) scene.remove(c.model.root);
   if (prevModel) { scene.remove(prevModel.root); prevModel = null; }
-  cars = []; player = null;
+  cars = []; player = null; persOff = (Math.random() * PERS.length) | 0;
   const def = track(), th = W.th, n = 6, surf = def.theme === "snow" ? .84 : 1, mul = S.diff;
   for (let k = 0; k < n; k++) {
     const isP = mode === "race" && k === n - 1;
@@ -330,11 +330,12 @@ function spawn(mode) {
       c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
       const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : (CARS.filter(x => hasCar(x.id)).length ? CARS.filter(x => hasCar(x.id)) : CARS), base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
-      const P = playerSpec(), f = .84 + (mul - .92) * .6;
-      const sp = { ...base, vmax: Math.min(vm, P.vmax * f * rnd(.97, 1.01)), acc: Math.min(8.5 + def.diff * 1.8 + (mul - 1) * 8, P.acc * (f - .05)), mu: Math.min(1.3 + def.diff * .06, P.mu * (f + .02)), brake: Math.min(12.5, P.brake) };
+      const P = playerSpec(), f = .97 + (mul - 1) * .5, pe = PERS[(k + persOff) % PERS.length];
+      const sp = { ...base, vmax: Math.min(vm * 1.04, P.vmax * f * pe.sp), acc: Math.min(11 + def.diff * 1.8 + (mul - 1) * 8, P.acc * f * pe.ac), mu: Math.min(1.45 + def.diff * .06, P.mu * (f + .03) * pe.mu), brake: Math.min(13.5, P.brake * pe.br) };
       const col = COLORS[(Math.random() * COLORS.length) | 0];
-      c = new Car(sp, { name: ["Макс", "Олекс", "Дана", "Тарас", "Ліза", "Юрко", "Ігор", "Софа"][(Math.random() * 8) | 0], color: col, skill: rnd(.9, .98), lane: rnd(-3, 3), surf });
-      c.skillBase = c.skill; c.pA = rnd(.05, .085); c.pP = rnd(13, 26); c.pph = rnd(0, 6.28); c.qA = rnd(.02, .035); c.qP = rnd(5, 9); c.qph = rnd(0, 6.28);
+      c = new Car(sp, { name: pe.name, color: col, skill: pe.skill + rnd(-.015, .015), lane: rnd(-3, 3), surf });
+      c.pers = pe; c.cm = pe.cm; c.bm = pe.bm; c.nitroAt = pe.nit; c.lanePer = pe.lp; c.laneFix = pe.fix === undefined ? undefined : pe.fix * rnd(.8, 1.1);
+      c.skillBase = c.skill; c.pA = pe.pa; c.pP = rnd(13, 26); c.pph = rnd(0, 6.28); c.qA = pe.qa; c.qP = rnd(5, 9); c.qph = rnd(0, 6.28);
     }
     const g = gridPos(k); c.place(T, Math.round(g.idx), g.lat, W.H); c.pi = c.idx; c.lap = 0; c.lapStart = 0; c.cheat = 0;
     if (mode === "demo") { c.lap = 1; }
@@ -510,6 +511,15 @@ function hudDrag() {
 }
 
 /* ---------------- гонка ---------------- */
+const PERS = [
+  { name: "Агресор", skill: .985, sp: 1.0, ac: 1.0, mu: 1.0, br: 1.0, cm: 1.08, bm: 1.35, nit: .35, lp: 2.5, pa: .035, qa: .02, st: 0, lt: 0 },
+  { name: "Метроном", skill: .965, sp: 1.0, ac: .98, mu: 1.03, br: 1.0, cm: 1.0, bm: 1.0, nit: .8, lp: 30, fix: 1.2, pa: .01, qa: .005, st: 0, lt: 0 },
+  { name: "Спринтер", skill: .955, sp: .97, ac: 1.12, mu: .97, br: 1.0, cm: .95, bm: 1.1, nit: .3, lp: 6, pa: .03, qa: .02, st: .09, lt: -.05 },
+  { name: "Фінішер", skill: .93, sp: 1.03, ac: .94, mu: 1.0, br: 1.0, cm: 1.02, bm: 1.0, nit: .55, lp: 8, pa: .025, qa: .015, st: -.06, lt: .09 },
+  { name: "Обережний", skill: .95, sp: 1.04, ac: 1.0, mu: .94, br: 1.05, cm: .88, bm: .85, nit: .7, lp: 14, pa: .02, qa: .01, st: 0, lt: 0 },
+  { name: "Хаос", skill: .96, sp: 1.02, ac: 1.03, mu: 1.0, br: .95, cm: 1.1, bm: 1.2, nit: .25, lp: 1.6, pa: .075, qa: .05, st: .04, lt: .02 }
+];
+let persOff = 0;
 async function startRace(ti) {
   A.audioInit(); if (freeKind) { bankDrift(); document.body.classList.remove("free", "drag"); $("#tree").hidden = true; }
   if (ti !== curTrack || freeKind) await loadTrack(ti);
@@ -574,9 +584,10 @@ function rubber(dt) {
   if (!player) return; ordCache = order();
   for (const c of cars) if (c !== player && c.skillBase) {
     const d = (c.progress - player.progress) * T.step;
-    const rb = d > 260 ? .9 : d > 120 ? .95 : d < -200 ? 1.02 : 1;
+    const rb = d > 320 ? .94 : d > 160 ? .975 : d < -220 ? 1.025 : 1;
     const tt = raceT, pace = 1 + c.pA * Math.sin(tt / c.pP * 6.283 + c.pph) + c.qA * Math.sin(tt / c.qP * 6.283 + c.qph);   // то швидше, то повільніше
-    c.skill = c.skillBase * rb * pace;
+    const pr = c.pers || { st: 0, lt: 0 };
+    c.skill = c.skillBase * rb * pace * (1 + pr.st * Math.max(0, 1 - raceT / 25) + pr.lt * Math.min(1, raceT / 70));
   }
 }
 function racePlace(c) { return ordCache.indexOf(c) + 1; }

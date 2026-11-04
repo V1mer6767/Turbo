@@ -238,7 +238,7 @@ export function aiInput(c, T, cars, dt, racing) {
   }
   const maxL = T.halfW - 2.2;
   c.laneT = (c.laneT === undefined ? Math.random() * 5 : c.laneT) - dt;   // кожен їде своєю лінією і час від часу міняє її
-  if (c.laneT <= 0) { c.laneT = 4 + Math.random() * 7; c.lane0 = (Math.random() * 2 - 1) * maxL * .85; }
+  if (c.laneT <= 0) { c.laneT = (c.lanePer || 7) * (.5 + Math.random()); c.lane0 = c.laneFix !== undefined ? c.laneFix + (Math.random() - .5) * 1.5 : (Math.random() * 2 - 1) * maxL * .85; }
   const target = clamp(c.lane0 + avoid * 3.2, -maxL, maxL);
   c.lane += clamp(target - c.lane, -1.8 * dt, 1.8 * dt);
   const look = 3 + Math.floor(sp / 8), ti = (c.idx + look) % M;
@@ -248,7 +248,7 @@ export function aiInput(c, T, cars, dt, racing) {
   const per = Math.min(vv * Math.tan(.55 * c.spec.steer) / 2.7, c.spec.mu * 9.81 * .97 / Math.max(vv, 5));
   let steer = clamp((2 * Math.sin(err) / Ld * vv) / per, -1, 1);
   // швидкість з урахуванням майбутніх поворотів
-  const aLat = c.spec.mu * 9.81 * .86 * c.skill, aB = c.spec.brake * .62;
+  const aLat = c.spec.mu * 9.81 * .86 * c.skill * (c.cm || 1), aB = c.spec.brake * .62 * (c.bm || 1);
   let vt = c.spec.vmax * c.skill, clear = true;
   for (let k = 0; k <= 34; k++) {
     const i = (c.idx + k) % M;
@@ -264,7 +264,7 @@ export function aiInput(c, T, cars, dt, racing) {
   if (c.speed < 2.5) c.stuck += dt; else c.stuck = Math.max(0, c.stuck - dt);
   if (c.stuck > 1.4) { c.revT = 1.1; c.stuck = 0; }
   if (c.revT > 0) { c.revT -= dt; return { steer: -steer, gas: false, brake: true }; }
-  return { steer, gas, brake, drift: false, nitro: c.nitro > .6 && clear && sp < c.spec.vmax * .93 };
+  return { steer, gas, brake, drift: false, nitro: c.nitro > (c.nitroAt || .6) && clear && sp < c.spec.vmax * .93 };
 }
 
 /* ---------------- зіткнення машин ---------------- */
