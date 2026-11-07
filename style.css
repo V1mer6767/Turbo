@@ -71,8 +71,8 @@ body.tilt .steer{display:none}
 .card .row{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:var(--dim)}
 .stars{color:var(--acc2);letter-spacing:2px}
 .garBottom{position:absolute;bottom:0;left:0;right:0;padding:0 max(18px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:10px;background:linear-gradient(0deg,rgba(6,8,14,.85),rgba(6,8,14,0));padding-top:50px;align-items:center}
-.carTabs{position:absolute;left:max(12px,env(safe-area-inset-left));top:70px;bottom:150px;width:158px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;z-index:3;padding-right:4px;scrollbar-width:thin}
-.carTabs .tab{text-align:left;padding:7px 11px;flex:none;background:rgba(0,0,0,.45)}
+.carTabs{touch-action:pan-y;overscroll-behavior:contain;position:absolute;left:max(12px,env(safe-area-inset-left));top:70px;bottom:150px;width:158px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;z-index:3;padding-right:4px;scrollbar-width:thin}
+.carTabs .tab{touch-action:pan-y;text-align:left;padding:7px 11px;flex:none;background:rgba(0,0,0,.45)}
 .carTabs .tab.on{background:#fff}
 .tab{padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.1);font-weight:700;font-size:14px;touch-action:manipulation}
 .tab.on{background:#fff;color:#111}

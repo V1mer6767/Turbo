@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 37;
+const BUILD = 38;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -52,7 +52,7 @@ document.addEventListener("click", () => {
   if (el.requestFullscreen) el.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {});
 });
 for (const ev of ["selectstart", "contextmenu", "dragstart", "gesturestart", "copy", "cut"]) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
-document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target.closest(".cards,.setList,.resList")) e.preventDefault(); }, { passive: false });
+document.addEventListener("touchmove", e => { if (!e.target.closest || !e.target.closest(".cards,.setList,.resList,.carTabs")) e.preventDefault(); }, { passive: false });
 
 /* ---------------- стан ---------------- */
 let W = null, T = null, scene = null, curTrack = -1, envRT = null;
