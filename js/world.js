@@ -13,11 +13,12 @@ export const THEMES = {
     ground: [38, 58, 42], gravel: [70, 70, 74], hill: 20, tree: "pine", treeCol: 0x14301d, mount: 0x0d1424, env: .6, stars: 1, clouds: 0, lamps: true }
 };
 
+let ANISO = 8;
 function canvasTex(w, h, draw, rep) {
   const c = document.createElement("canvas"); c.width = w; c.height = h;
   const g = c.getContext("2d"); draw(g, w, h);
   const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = ANISO;
   if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
   return t;
 }
@@ -91,6 +92,7 @@ export function makeSky(th) {
 
 /* Створює всю сцену траси */
 export function buildWorld(def, quality) {
+  ANISO = quality.aniso || 8;
   const th = THEMES[def.theme], T = buildCenterline(def);
   const scene = new THREE.Scene();
   const root = new THREE.Group(); scene.add(root);
@@ -156,7 +158,7 @@ export function buildWorld(def, quality) {
     const m = new THREE.Mesh(g, mat); m.receiveShadow = true; return m;
   }
   const hw = T.halfW;
-  const rt = roadTexture(); rt.repeat.set(1, 1); rt.anisotropy = 8;
+  const rt = roadTexture(); rt.repeat.set(1, 1); rt.anisotropy = ANISO;
   const road = ribbon(-hw, hw, .02, new THREE.MeshStandardMaterial({ map: rt, roughness: th.lamps ? .55 : th.ground[0] > 200 ? .75 : .88, metalness: 0, envMapIntensity: th.lamps ? 1.6 : 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 24);
   root.add(road);
   const kt = kerbTexture(); kt.repeat.set(1, 1);
@@ -308,11 +310,11 @@ export function buildWorld(def, quality) {
     for (let i = 0; i < T.M; i += 7) for (const s of [-1, 1]) {
       const lat = s * (hw + 7.5), x = T.x[i] + T.nx[i] * lat, z = T.z[i] + T.nz[i] * lat, y = H(x, z, i);
       m4.makeTranslation(x, y + 4.5, z); pole.setMatrixAt(n++, m4);
-      const sp = new THREE.Sprite(gm); sp.position.set(x - T.nx[i] * s * .5, y + 9.2, z - T.nz[i] * s * .5); sp.scale.set(12, 12, 1); root.add(sp);
+      const sp = new THREE.Sprite(gm); sp.position.set(x - T.nx[i] * s * .5, y + 9.2, z - T.nz[i] * s * .5); const gs = quality.bloom ? 4.5 : 12; sp.scale.set(gs, gs, 1); root.add(sp);
     }
     pole.count = n; root.add(pole);
   }
 
   /* --- карта оточення для відблисків --- */
-  return { scene, T, th, sun, hemi, sky, H, bbox: { minX, maxX, minZ, maxZ, cx, cz }, root };
+  return { scene, T, th, sun, hemi, sky, H, bbox: { minX, maxX, minZ, maxZ, cx, cz }, root, road };
 }

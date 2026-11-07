@@ -5,8 +5,9 @@ import { buildArena, ARENAS } from "./arena.js";
 import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide, UPS, UP_MAX, upCost, stageOf, tuned, hpOf } from "./car.js";
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
+import { QUAL, QUAL_LIST, Post, Rain, Drops, applyRain, addHeadlights } from "./gfx.js";
 
-const BUILD = 38;
+const BUILD = 39;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -17,11 +18,6 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(SK) || "{}")); } catch (e
 if (!S.garage) { S.garage = (S.owned || ["city"]).map(id => ({ uid: id, id, color: (S.colors || {})[id] || null })); S.sel = S.car; }
 if (!S.garage.some(g => g.uid === S.sel)) S.sel = S.garage[0].uid;
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
-const QUAL = {
-  low: { pr: 1, shadow: 0, trees: 450, terrainCell: 10, treeShadow: false },
-  mid: { pr: 1.15, shadow: 1024, trees: 1000, terrainCell: 8, treeShadow: false },
-  high: { pr: 2, shadow: 2048, trees: 1700, terrainCell: 6, treeShadow: true }
-};
 const qual = () => QUAL[S.quality] || QUAL.mid;
 
 /* ---------------- рендер ---------------- */
@@ -31,6 +27,17 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(62, 1, .3, 5200);
 const pmrem = new THREE.PMREMGenerator(renderer);
+const post = new Post(renderer);
+const rainCv = document.getElementById("fxRain"); const drops0 = rainCv ? new Drops(rainCv) : null;
+let rain = null, rainOn = false; const drops = drops0;
+function setupWeather() {
+  if (rain) { scene.remove(rain.obj); rain.dispose(); rain = null; }
+  rainOn = S.weather === "rain" || (S.weather === "auto" && Math.random() < .35);
+  if (rainOn) { applyRain(W, true); rain = new Rain(qual().rain); scene.add(rain.obj); }
+  if (drops) drops.on = rainOn;
+  const es = new THREE.Scene(); es.add(W.sky.clone());
+  envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
+}
 let prScale = 1;
 const coarse = matchMedia("(pointer:coarse)").matches;
 function applySize() {
@@ -171,7 +178,8 @@ function buildFreeList() {
 
 function buildSettings() {
   const rows = [
-    ["Graphics", "Lower = smoother on a weak phone", "quality", [["low", "Low"], ["mid", "Medium"], ["high", "High"]]],
+    ["Graphics", "Low → Cinematic. High+ uses bloom, motion blur, anti-aliasing", "quality", QUAL_LIST],
+    ["Weather", "Rain: wet road, spray, drops on the glass (applies on next load)", "weather", [["clear", "Clear"], ["rain", "Rain"], ["auto", "Auto"]]],
     ["Opponents", "Driver speed", "diff", [[.92, "Easy"], [1, "Normal"], [1.07, "Hard"]]],
     ["Laps per race", "", "laps", [[2, "2"], [3, "3"], [5, "5"]]],
     ["Throttle", "Auto — just steer and brake", "auto", [[true, "Auto"], [false, "Button"]]],
@@ -190,7 +198,7 @@ function buildSettings() {
       b.onclick = () => {
         S[key] = v; save(); buildSettings();
         if (key === "sound") A.setSound(v);
-        if (key === "quality") { applySize(); curTrack !== -1 && reload(); }
+        if (key === "quality" || key === "weather") { applySize(); curTrack !== -1 && reload(); }
         if (key === "auto") document.body.classList.toggle("auto", v);
         if (key === "tilt") { document.body.classList.toggle("tilt", v); if (v) enableTilt(); }
       };
@@ -243,8 +251,7 @@ async function loadTrack(ti) {
   renderer.shadowMap.enabled = !!q.shadow;
   W = buildWorld(def, q); T = W.T; scene = W.scene; curTrack = ti; S.last = ti; save();
   W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
-  const es = new THREE.Scene(); es.add(makeSky(W.th));
-  envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
+  setupWeather();
   initEffects();
   applySize();
 }
@@ -341,6 +348,7 @@ function spawn(mode) {
     if (mode === "demo") { c.lap = 1; }
     c.grid = k;
     addModel(c, th, isP && th.lamps);
+    if (isP && qual().post && (th.lamps || rainOn)) addHeadlights(c.model, rainOn);
     cars.push(c);
   }
   if (mode === "demo") cars.forEach((c, i) => { const j = Math.round(i * T.M / 6); c.place(T, j, rnd(-2, 2), W.H); c.pi = c.idx; c.vx = Math.cos(c.a) * 25; c.vz = Math.sin(c.a) * 25; c.vf = 25; });
@@ -358,8 +366,7 @@ async function startFree(kind) {
   disposeWorld(); const q = qual(); renderer.shadowMap.enabled = !!q.shadow;
   W = buildArena(kind, q); T = W.T; scene = W.scene; curTrack = -1; freeKind = kind; miniBg = null;
   W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
-  const es = new THREE.Scene(); es.add(makeSky(W.th));
-  envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
+  setupWeather();
   initEffects(); applySize();
   $("#loadTxt").textContent = "Loading car…"; await ensureCar(S.car);
   spawnFree(); drReset(); camNear();
@@ -426,8 +433,7 @@ async function startDrag(level) {
   disposeWorld(); const q = qual(); renderer.shadowMap.enabled = !!q.shadow;
   W = buildArena("drag", q); T = W.T; scene = W.scene; curTrack = -1; freeKind = "drag"; miniBg = null;
   W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
-  const es = new THREE.Scene(); es.add(makeSky(W.th));
-  envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
+  setupWeather();
   initEffects(); applySize();
   $("#loadTxt").textContent = "Loading cars…"; await Promise.all([ensureCar(S.car), ensureCar(L.car)]);
   for (const c of cars) scene.remove(c.model.root);
@@ -676,6 +682,7 @@ function updateCamera(dt) {
     camLook.set(p.x + Math.cos(camYaw) * 6 * lam, p.y + 1.15, p.z + Math.sin(camYaw) * 6 * lam); camera.lookAt(camLook);
     camFov = lerp(camFov, 60 + sp * .28 + (boost ? 9 : 0), Math.min(1, dt * 5));
   }
+  { const qs = qual().shake; if (qs && camMode !== 3) { const s = Math.min(1, sp / 85), a = (.0035 * s * (p.off ? 3 : 1) + (boost ? .004 : 0)) * qs; camera.position.x += Math.sin(t * 47) * a; camera.position.y += Math.sin(t * 61 + 1) * a * 1.3; camera.position.z += Math.sin(t * 53 + 2) * a; } }
   if (Math.abs(camera.fov - camFov) > .05) { camera.fov = camFov; camera.updateProjectionMatrix(); partMat && (partMat.uniforms.uK.value = renderer.domElement.height / (2 * Math.tan(camFov * Math.PI / 360))); }
 }
 
@@ -684,6 +691,7 @@ function effects(dt) {
   const th = W.th, g = th.ground;
   for (const c of cars) {
     const fx = Math.cos(c.a), fz = Math.sin(c.a), rx = -fz, rz = fx, L = c.spec.L, Wd = c.spec.W;
+    if (rainOn && c.speed > 14 && Math.random() < Math.min(1, c.speed / 45) * .6) { const s = Math.random() < .5 ? -1 : 1, wx = c.x - fx * L * .32 + rx * s * (Wd / 2 - .2), wz = c.z - fz * L * .32 + rz * s * (Wd / 2 - .2); emit(wx, W.H(wx, wz, c.idx) + .18, wz, rnd(-.7, .7) - fx * 1.2, rnd(.4, 1.2), rnd(-.7, .7) - fz * 1.2, rnd(.5, 1), .7, 2.4, .8, .85, .9, .2); }
     const act = c.speed > 6 && (c.slip > 5.5 || (c.braking && c.aLong < -9 && c.speed > 28));
     const sm = c.thr && c.vf < 7 && c.aLong > 3 && c.speed < 15;
     if (act || sm) {
@@ -886,7 +894,10 @@ function frame(now) {
   { const on = player && (state === "race" || state === "free" || state === "finish"), v = on ? clamp((player.speed * 3.6 - 130) / 170, 0, 1) * .75 + (player.boostT > 0 ? .35 : 0) : 0, r = Math.round(Math.min(1, v) * 20) / 20;
     if (r !== fxS) { fxS = r; $("#fxSpd").style.opacity = r; } const nt = on && player.boostT > 0; if (nt !== fxN) { fxN = nt; document.body.classList.toggle("nit", nt); } }
   A.audioFrame(player, state === "race" || state === "finish" || state === "free" ? true : (state === "count" ? "idle" : false));
-  renderer.render(scene, camera);
+  if (rain) rain.update(now / 1000, camera.position, player ? { x: player.vx, z: player.vz } : { x: 0, z: 0 });
+  if (drops) drops.update(dt, rainOn && state !== "menu" && state !== "garage" && state !== "loading" ? (camMode === 1 ? 1 : .35) : 0, player ? player.speed * 3.6 : 0);
+  { const on = player && (state === "race" || state === "free" || state === "finish"), s01 = on ? clamp((player.speed * 3.6 - 110) / 200, 0, 1) + (player.boostT > 0 ? .3 : 0) : 0;
+    if (!post.render(S.quality, scene, camera, dt, Math.min(1.2, s01), now / 1000)) renderer.render(scene, camera); }
   if (interp) restoreInterp();
   // динамічна роздільність
   if (state === "race" || state === "free") {

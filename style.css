@@ -151,3 +151,6 @@ body.drag .c[data-k="drift"]{display:none}
 #hpBox b{font-size:26px;font-weight:900;letter-spacing:.5px}
 #hpBox em{font-style:normal;color:#2ee86a;font-weight:800;font-size:13px}
 #hpBox small{font-size:11px;opacity:.8}
+
+#fxRain{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;opacity:0;image-rendering:auto}
+body.rot #fxRain{inset:auto;top:0;left:0}
