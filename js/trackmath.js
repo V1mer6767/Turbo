@@ -6,21 +6,21 @@ export const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); r
 export function angDiff(a, b) { let d = b - a; while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU; return d; }
 
 export const TRACK_DEFS = [
-  { id: "forest", name: "Лісова траса", sub: "Швидкі повороти, легкий рельєф", theme: "day", diff: 1, R: 340, sx: 1.4, sy: 1, w: 14, aiMax: 50,
+  { id: "forest", name: "Forest Track", sub: "Fast corners, gentle terrain", theme: "day", diff: 1, R: 340, sx: 1.4, sy: 1, w: 14, aiMax: 50,
     f: t => 1 + .16 * Math.sin(2 * t) + .09 * Math.sin(3 * t + 1) + .03 * Math.sin(5 * t), elev: t => 7 * Math.sin(2 * t + .5) + 3 * Math.sin(3 * t) },
-  { id: "canyon", name: "Каньйон на заході", sub: "Пустеля, довгі дуги й пагорби", theme: "sunset", diff: 2, R: 360, sx: 1.2, sy: 1, w: 13, aiMax: 56,
+  { id: "canyon", name: "Western Canyon", sub: "Desert, long arcs and hills", theme: "sunset", diff: 2, R: 360, sx: 1.2, sy: 1, w: 13, aiMax: 56,
     f: t => 1 + .17 * Math.sin(3 * t) + .07 * Math.sin(5 * t + .5), elev: t => 11 * Math.sin(t + 1) + 5 * Math.sin(2 * t) },
-  { id: "glacier", name: "Льодовик", sub: "Сніг, шпильки й швидкі відрізки", theme: "snow", diff: 3, R: 380, sx: 1.3, sy: 1, w: 13, aiMax: 63,
+  { id: "glacier", name: "Glacier", sub: "Snow, hairpins and fast sections", theme: "snow", diff: 3, R: 380, sx: 1.3, sy: 1, w: 13, aiMax: 63,
     f: t => 1 + .2 * Math.sin(2 * t) + .1 * Math.sin(4 * t + 1) + .035 * Math.sin(7 * t), elev: t => 8 * Math.sin(2 * t) + 2 * Math.sin(5 * t + 1) },
-  { id: "night", name: "Нічне місто", sub: "Темно, технічно, багато поворотів", theme: "night", diff: 4, R: 400, sx: 1.1, sy: 1, w: 12, aiMax: 70,
+  { id: "night", name: "Night City", sub: "Dark, technical, lots of turns", theme: "night", diff: 4, R: 400, sx: 1.1, sy: 1, w: 12, aiMax: 70,
     f: t => 1 + .15 * Math.sin(4 * t) + .05 * Math.sin(7 * t + 2) + .07 * Math.sin(3 * t), elev: t => 6 * Math.sin(3 * t) + 4 * Math.sin(t + 2) },
-  { id: "speedway", name: "Автодром", sub: "Широка, швидка, довгі прямі", theme: "day", diff: 2, R: 320, sx: 1.6, sy: .9, w: 16, aiMax: 58,
+  { id: "speedway", name: "Speedway", sub: "Wide, fast, long straights", theme: "day", diff: 2, R: 320, sx: 1.6, sy: .9, w: 16, aiMax: 58,
     f: t => 1 + .13 * Math.sin(2 * t) + .07 * Math.sin(4 * t + .8) + .03 * Math.sin(6 * t), elev: t => 2.5 * Math.sin(2 * t) + 1.5 * Math.sin(3 * t + 1) },
-  { id: "serpent", name: "Серпантин", sub: "Захід сонця, гори й послідовні повороти", theme: "sunset", diff: 3, R: 350, sx: 1.2, sy: 1, w: 12, aiMax: 60,
+  { id: "serpent", name: "Serpentine", sub: "Sunset, mountains and linked turns", theme: "sunset", diff: 3, R: 350, sx: 1.2, sy: 1, w: 12, aiMax: 60,
     f: t => 1 + .13 * Math.sin(5 * t) + .08 * Math.sin(3 * t + 1) + .035 * Math.sin(8 * t), elev: t => 11 * Math.sin(t) + 4 * Math.sin(3 * t + 1) },
-  { id: "marathon", name: "Зимовий марафон", sub: "Довге снігове коло з плавними дугами", theme: "snow", diff: 2, R: 430, sx: 1.7, sy: .85, w: 14, aiMax: 58,
+  { id: "marathon", name: "Winter Marathon", sub: "Long snowy lap with smooth arcs", theme: "snow", diff: 2, R: 430, sx: 1.7, sy: .85, w: 14, aiMax: 58,
     f: t => 1 + .1 * Math.sin(3 * t) + .06 * Math.sin(5 * t + 2) + .03 * Math.sin(2 * t), elev: t => 5 * Math.sin(2 * t + 1) + 3 * Math.sin(5 * t) },
-  { id: "neon", name: "Неонове коло", sub: "Ніч, швидкі зв'язки поворотів", theme: "night", diff: 3, R: 370, sx: 1.25, sy: 1, w: 13, aiMax: 66,
+  { id: "neon", name: "Neon Circuit", sub: "Night, fast corner combinations", theme: "night", diff: 3, R: 370, sx: 1.25, sy: 1, w: 13, aiMax: 66,
     f: t => 1 + .13 * Math.sin(2 * t) + .09 * Math.sin(5 * t) + .04 * Math.sin(9 * t + 1), elev: t => 4 * Math.sin(2 * t) + 3 * Math.sin(4 * t + 2) }
 ];
 

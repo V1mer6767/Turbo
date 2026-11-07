@@ -6,7 +6,7 @@ import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiI
 import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 
-const BUILD = 35;
+const BUILD = 36;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -152,7 +152,7 @@ function buildTrackList() {
   TRACK_DEFS.forEach((d, i) => {
     const b = document.createElement("button"); b.className = "card";
     const t = S.best[d.id];
-    b.innerHTML = `<div class="pic" style="background:${grads[d.theme]}"></div><div class="t"><h3>${d.name}</h3><p>${d.sub}</p><div class="row"><span class="stars">${"★".repeat(d.diff)}${"☆".repeat(4 - d.diff)}</span><span>${t ? "🏁 " + fmtT(t) : "ще не їхав"}</span></div></div>`;
+    b.innerHTML = `<div class="pic" style="background:${grads[d.theme]}"></div><div class="t"><h3>${d.name}</h3><p>${d.sub}</p><div class="row"><span class="stars">${"★".repeat(d.diff)}${"☆".repeat(4 - d.diff)}</span><span>${t ? "🏁 " + fmtT(t) : "not driven yet"}</span></div></div>`;
     b.onclick = () => startRace(i);
     el.appendChild(b);
   });
@@ -163,7 +163,7 @@ function buildFreeList() {
   const grads = { lot: "linear-gradient(180deg,#28345e,#ff9a58 55%,#6d6f74 56%)", city: "linear-gradient(180deg,#02040c,#243a6a 45%,#ffd98a 46%,#1b2130 70%)" };
   ARENAS.filter(a => !a.hidden).forEach(a => {
     const b = document.createElement("button"); b.className = "card";
-    b.innerHTML = `<div class="pic" style="background:${grads[a.id]}"></div><div class="t"><h3>${a.name}</h3><p>${a.sub}</p><div class="row"><span>Дрифт = очки і монети</span><span>🏆 ${S.driftBest || 0}</span></div></div>`;
+    b.innerHTML = `<div class="pic" style="background:${grads[a.id]}"></div><div class="t"><h3>${a.name}</h3><p>${a.sub}</p><div class="row"><span>Drift = points and coins</span><span>🏆 ${S.driftBest || 0}</span></div></div>`;
     b.onclick = () => startFree(a.id);
     el.appendChild(b);
   });
@@ -171,14 +171,14 @@ function buildFreeList() {
 
 function buildSettings() {
   const rows = [
-    ["Графіка", "Нижча = плавніше на слабкому телефоні", "quality", [["low", "Низька"], ["mid", "Середня"], ["high", "Висока"]]],
-    ["Суперники", "Швидкість водіїв", "diff", [[.92, "Легко"], [1, "Норма"], [1.07, "Складно"]]],
-    ["Кіл у гонці", "", "laps", [[2, "2"], [3, "3"], [5, "5"]]],
-    ["Газ", "Авто — просто кермуй і гальмуй", "auto", [[true, "Авто"], [false, "Кнопка"]]],
-    ["Допомога в поворотах", "Сама збавляє швидкість при крутому керуванні", "assist", [[true, "Так"], [false, "Ні"]]],
-    ["Звук", "", "sound", [[true, "Увімк"], [false, "Вимк"]]],
-    ["Кермо нахилом", "Експериментально: нахиляй телефон", "tilt", [[false, "Ні"], [true, "Так"]]],
-    ["Інвертувати нахил", "Якщо повертає в інший бік", "tiltInv", [[false, "Ні"], [true, "Так"]]]
+    ["Graphics", "Lower = smoother on a weak phone", "quality", [["low", "Low"], ["mid", "Medium"], ["high", "High"]]],
+    ["Opponents", "Driver speed", "diff", [[.92, "Easy"], [1, "Normal"], [1.07, "Hard"]]],
+    ["Laps per race", "", "laps", [[2, "2"], [3, "3"], [5, "5"]]],
+    ["Throttle", "Auto — just steer and brake", "auto", [[true, "Auto"], [false, "Button"]]],
+    ["Corner assist", "Slows down by itself in tight steering", "assist", [[true, "Yes"], [false, "No"]]],
+    ["Sound", "", "sound", [[true, "On"], [false, "Off"]]],
+    ["Tilt steering", "Experimental: tilt your phone", "tilt", [[false, "No"], [true, "Yes"]]],
+    ["Invert tilt", "If it steers the wrong way", "tiltInv", [[false, "No"], [true, "Yes"]]]
   ];
   const el = $("#setList"); el.innerHTML = "";
   for (const [name, hint, key, opts] of rows) {
@@ -200,19 +200,19 @@ function buildSettings() {
   }
   if (document.documentElement.requestFullscreen) {
     const f = document.createElement("div"); f.className = "set";
-    f.innerHTML = `<div>На весь екран<small>Ховає панелі браузера</small></div><div class="opts"><button id="stFs">Увімкнути</button></div>`;
+    f.innerHTML = `<div>Fullscreen<small>Hides browser bars</small></div><div class="opts"><button id="stFs">Enable</button></div>`;
     el.appendChild(f);
     $("#stFs").onclick = () => { document.documentElement.requestFullscreen().then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape").catch(() => {})).catch(() => {}); };
   }
   const r = document.createElement("div"); r.className = "set";
-  r.innerHTML = `<div>Оновити гру<small>Підтягнути нову версію (збереження лишаться)</small></div><div class="opts"><button id="stRef">Оновити</button></div>`;
+  r.innerHTML = `<div>Update game<small>Fetch the new version (saves are kept)</small></div><div class="opts"><button id="stRef">Update</button></div>`;
   el.appendChild(r); $("#stRef").onclick = hardRefresh;
 }
 async function checkUpdate() {
   try {
     const r = await fetch("version.json?" + Date.now(), { cache: "no-store" }); if (!r.ok) return;
     const j = await r.json();
-    if (j.build > BUILD) { if (!sessionStorage.getItem("updTry" + j.build)) { sessionStorage.setItem("updTry" + j.build, "1"); hardRefresh(); } else $("#ver").textContent = "v" + BUILD + " → є v" + j.build + " (Налаштування → Оновити)"; }
+    if (j.build > BUILD) { if (!sessionStorage.getItem("updTry" + j.build)) { sessionStorage.setItem("updTry" + j.build, "1"); hardRefresh(); } else $("#ver").textContent = "v" + BUILD + " → v" + j.build + " (Settings → Update)"; }
   } catch (e) {}
 }
 document.addEventListener("visibilitychange", () => { if (!document.hidden && state === "menu") checkUpdate(); });
@@ -236,7 +236,7 @@ function disposeWorld() {
   cars = []; player = null; prevModel = null;
 }
 async function loadTrack(ti) {
-  $("#loadTxt").textContent = "Будуємо трасу…"; show("sLoad");
+  $("#loadTxt").textContent = "Building the track…"; show("sLoad");
   await new Promise(r => setTimeout(r, 40));
   disposeWorld(); freeKind = null; miniBg = null;
   const def = TRACK_DEFS[ti], q = qual();
@@ -327,7 +327,7 @@ function spawn(mode) {
     let c;
     if (isP) {
       const sp = playerSpec();
-      c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf }); player = c;
+      c = new Car(sp, { player: true, name: "You", color: S.colors[sp.id] || sp.color, surf }); player = c;
     } else {
       const pool = mode === "race" ? CARS.slice(0, Math.max(1, CARS.findIndex(x => x.id === S.car) + 1)) : (CARS.filter(x => hasCar(x.id)).length ? CARS.filter(x => hasCar(x.id)) : CARS), base = pool[(Math.random() * pool.length) | 0], vm = def.aiMax * mul * rnd(.95, 1.03);
       const P = playerSpec(), f = .97 + (mul - 1) * .5, pe = PERS[(k + persOff) % PERS.length];
@@ -354,25 +354,25 @@ const dr = { cur: 0, t: 0, idle: 0, mult: 1, session: 0, earned: 0, hit: 0 };
 function drReset() { dr.cur = 0; dr.t = 0; dr.idle = 0; dr.mult = 1; dr.session = 0; dr.earned = 0; dr.hit = 0; }
 async function startFree(kind) {
   A.audioInit();
-  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Будуємо локацію…"; await new Promise(r => setTimeout(r, 40));
+  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Building the location…"; await new Promise(r => setTimeout(r, 40));
   disposeWorld(); const q = qual(); renderer.shadowMap.enabled = !!q.shadow;
   W = buildArena(kind, q); T = W.T; scene = W.scene; curTrack = -1; freeKind = kind; miniBg = null;
   W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
   const es = new THREE.Scene(); es.add(makeSky(W.th));
   envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
   initEffects(); applySize();
-  $("#loadTxt").textContent = "Завантаження машини…"; await ensureCar(S.car);
+  $("#loadTxt").textContent = "Loading car…"; await ensureCar(S.car);
   spawnFree(); drReset(); camNear();
   try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {}
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true;
   document.body.classList.remove("drag"); $("#tree").hidden = true; document.body.classList.add("free"); document.body.classList.toggle("auto", S.auto); document.body.classList.toggle("tilt", S.tilt);
   state = "free"; snapCamera(); applySize();
-  banner("Тисни ДРИФТ і крути кермо — чим довше слайд, тим більше очок", 3200);
+  banner("Hold DRIFT and steer — the longer the slide, the more points", 3200);
 }
 function spawnFree() {
   for (const c of cars) scene.remove(c.model.root);
   const sp = playerSpec();
-  const c = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf: 1 }); player = c; cars = [c];
+  const c = new Car(sp, { player: true, name: "You", color: S.colors[sp.id] || sp.color, surf: 1 }); player = c; cars = [c];
   const city = freeKind === "city";
   c.x = city ? -53 : -30; c.z = city ? 53 : 0; c.a = 0; c.y = 0; c.idx = 0; c.pi = 0; c.lap = 1; c.grid = 0;
   addModel(c, W.th, W.th.lamps); syncAll(.016);
@@ -381,13 +381,13 @@ function bankDrift(why) {
   if (dr.cur < 30) { dr.cur = 0; dr.t = 0; dr.mult = 1; return; }
   const pts = Math.round(dr.cur), coins = Math.max(1, Math.floor(pts / 40));
   dr.session += pts; dr.earned += coins; S.coins += coins; S.driftTotal += pts;
-  if (pts > S.driftBest) { S.driftBest = pts; banner("Новий рекорд дрифту: " + pts + "! +" + coins + " 🪙", 2200); } else banner("Дрифт +" + pts + " · +" + coins + " 🪙", 1500);
+  if (pts > S.driftBest) { S.driftBest = pts; banner("New drift record: " + pts + "! +" + coins + " 🪙", 2200); } else banner("Drift +" + pts + " · +" + coins + " 🪙", 1500);
   save(); updCoins(); dr.cur = 0; dr.t = 0; dr.mult = 1;
 }
 function driftLogic(dt) {
   const p = player; if (!p) return;
   const ratio = p.slip / Math.max(p.speed, 1), on = p.speed > 9 && p.slip > 3 && ratio > .17 && !p.braking;
-  if (p.bump > .35 && dr.cur > 0) { dr.cur = 0; dr.t = 0; dr.mult = 1; dr.idle = 0; banner("Зіткнення — серія згоріла", 1100); return; }
+  if (p.bump > .35 && dr.cur > 0) { dr.cur = 0; dr.t = 0; dr.mult = 1; dr.idle = 0; banner("Collision — combo lost", 1100); return; }
   if (on) {
     dr.idle = 0; dr.t += dt; dr.mult = Math.min(6, 1 + Math.floor(dr.t / 1.8));
     dr.cur += dt * (p.speed * 0.9 + p.slip * 3) * Math.min(1.6, ratio * 3) * dr.mult * .5;
@@ -402,10 +402,10 @@ async function leaveFree() {
 
 /* ---------------- драг-рейсинг ---------------- */
 const DLEV = [
-  { name: "Новачок", car: "city", mul: .96, prize: 60, react: .42, sub: "Звичайна «Сіті» — гарна розминка" },
-  { name: "Любитель", car: "sport", mul: 1.04, prize: 150, react: .30, sub: "Спорткупе зі стартовою нітрою" },
-  { name: "Професіонал", car: "gt", mul: 1.1, prize: 320, react: .20, sub: "V12 — потрібна прокачана машина" },
-  { name: "Легенда", car: "hyper", mul: 1.22, prize: 800, react: .12, sub: "Гіперкар. Без стейджів не вистачить" }
+  { name: "Rookie", car: "city", mul: .96, prize: 60, react: .42, sub: "A plain M5 — a good warm-up" },
+  { name: "Amateur", car: "sport", mul: 1.04, prize: 150, react: .30, sub: "Sport coupe with a launch nitro" },
+  { name: "Pro", car: "gt", mul: 1.1, prize: 320, react: .20, sub: "V12 — you need an upgraded car" },
+  { name: "Legend", car: "hyper", mul: 1.22, prize: 800, react: .12, sub: "Hypercar. You need stages to keep up" }
 ];
 const DRG = 402, DX0 = -2.5;
 const drag = { level: 0, phase: 0, t: 0, jit: 0, gT: 0, fs: false, rt: null, bot: null, botGo: 0, res: null, show: 0 };
@@ -415,26 +415,26 @@ function buildDragList() {
   DLEV.forEach((d, i) => {
     const b = document.createElement("button"); b.className = "card";
     const bs = CARS.find(x => x.id === d.car), best = S.dragBest && S.dragBest[i];
-    b.innerHTML = `<div class="pic" style="background:linear-gradient(180deg,#28345e,#ff9a58 50%,#44474d 51%)"></div><div class="t"><h3>${d.name}</h3><p>${bs.name}: ${d.sub}</p><div class="row"><span>Приз 🪙 ${d.prize}</span><span>${best ? "🏁 " + (best / 1000).toFixed(2) + " с" : "—"}</span></div></div>`;
+    b.innerHTML = `<div class="pic" style="background:linear-gradient(180deg,#28345e,#ff9a58 50%,#44474d 51%)"></div><div class="t"><h3>${d.name}</h3><p>${bs.name}: ${d.sub}</p><div class="row"><span>Prize 🪙 ${d.prize}</span><span>${best ? "🏁 " + (best / 1000).toFixed(2) + " с" : "—"}</span></div></div>`;
     b.onclick = () => startDrag(i);
     el.appendChild(b);
   });
 }
 async function startDrag(level) {
   A.audioInit(); drag.level = level; const L = DLEV[level];
-  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Готуємо стріп…"; await new Promise(r => setTimeout(r, 40));
+  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Preparing the strip…"; await new Promise(r => setTimeout(r, 40));
   disposeWorld(); const q = qual(); renderer.shadowMap.enabled = !!q.shadow;
   W = buildArena("drag", q); T = W.T; scene = W.scene; curTrack = -1; freeKind = "drag"; miniBg = null;
   W.sun.userData = { dx: W.sun.position.x, dy: W.sun.position.y, dz: W.sun.position.z };
   const es = new THREE.Scene(); es.add(makeSky(W.th));
   envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
   initEffects(); applySize();
-  $("#loadTxt").textContent = "Завантаження машин…"; await Promise.all([ensureCar(S.car), ensureCar(L.car)]);
+  $("#loadTxt").textContent = "Loading cars…"; await Promise.all([ensureCar(S.car), ensureCar(L.car)]);
   for (const c of cars) scene.remove(c.model.root);
   const sp = playerSpec(), bs = CARS.find(x => x.id === L.car);
   const bsp = { ...bs, acc: bs.acc * L.mul, vmax: bs.vmax * (1 + (L.mul - 1) * .5), mu: bs.mu * L.mul };
-  const pc = new Car(sp, { player: true, name: "Ти", color: S.colors[sp.id] || sp.color, surf: 1 });
-  const bc = new Car(bsp, { name: "Суперник", color: COLORS[(Math.random() * COLORS.length) | 0], surf: 1 });
+  const pc = new Car(sp, { player: true, name: "You", color: S.colors[sp.id] || sp.color, surf: 1 });
+  const bc = new Car(bsp, { name: "Opponent", color: COLORS[(Math.random() * COLORS.length) | 0], surf: 1 });
   player = pc; cars = [pc, bc]; drag.bot = bc;
   pc.x = -pc.spec.L / 2 - .25; bc.x = -bc.spec.L / 2 - .25; pc.z = -3.6; bc.z = 3.6; for (const c of cars) { c.a = 0; c.y = 0; c.idx = 0; c.pi = 0; c.lap = 1; c.grid = 0; c.dFin = null; c.dStart = null; c.dSpd = 0; addModel(c, W.th, W.th.lamps); }
   bc.nitro = level >= 2 ? .9 : .4;
@@ -445,7 +445,7 @@ async function startDrag(level) {
   document.body.classList.add("free", "drag"); document.body.classList.remove("auto"); document.body.classList.toggle("tilt", S.tilt);
   $$("#tree i").forEach(i => i.className = i.classList.contains("g") ? "g" : ""); $("#tree").hidden = false;
   state = "free"; snapCamera(); applySize();
-  banner("Утримуй ГАЗ і рушай на зелене. НІТРО — для ривка", 3000);
+  banner("Hold GAS and go on green. NITRO for a boost", 3000);
 }
 function dragInput(c, pin) {
   const laneZ = c === player ? -3.6 : 3.6;
@@ -465,7 +465,7 @@ function dragLogic(dt) {
     tr.forEach((el, i) => { if (i < 3) el.className = i < n ? "on" : ""; });
     const g = 2.0 + drag.jit + .5;
     const pressed = !!(btn.gas || keys.ArrowUp || keys.KeyW);
-    if (pressed && t < g && !drag.fs) { drag.fs = true; tr[3].className = "g r"; banner("ФАЛЬСТАРТ! +1.5 с штрафу", 1800); }
+    if (pressed && t < g && !drag.fs) { drag.fs = true; tr[3].className = "g r"; banner("FALSE START! +1.5 s penalty", 1800); }
     if (t >= g) { tr[0].className = tr[1].className = tr[2].className = "on"; tr[3].className = drag.fs ? "g r" : "g on"; if (drag.fs) { tr[3].className = "g on"; } drag.phase = 2; drag.gT = drag.t; drag.t = 0; A.beep(1040, .35, .2); drag.show = 0; }
     return;
   }
@@ -493,8 +493,8 @@ function dragResults() {
   S.dragBest = S.dragBest || {}; let rec = false;
   if (win && (!S.dragBest[drag.level] || pET * 1000 < S.dragBest[drag.level])) { S.dragBest[drag.level] = Math.round(pET * 1000); rec = true; }
   S.dragWins = (S.dragWins | 0) + (win ? 1 : 0); save(); updCoins();
-  $("#drTitle").textContent = win ? "🏆 Перемога!" : "Програш";
-  $("#drBox").innerHTML = `Ти: <b>${pET.toFixed(2)} с</b> · ${Math.round(p.dSpd)} км/год${drag.fs ? " · фальстарт +1.5 с" : ""}<br>Суперник (${L.name}): <b>${b.dFin === null ? "—" : bET.toFixed(2) + " с"}</b> · ${Math.round(b.dSpd)} км/год<br>Реакція: ${drag.rt === null ? "—" : drag.rt.toFixed(2) + " с"}<br>Нагорода: <b>+${pay} 🪙</b>${rec ? "<br><b>Новий рекорд!</b>" : ""}`;
+  $("#drTitle").textContent = win ? "🏆 Victory!" : "Defeat";
+  $("#drBox").innerHTML = `You: <b>${pET.toFixed(2)} s</b> · ${Math.round(p.dSpd)} km/h${drag.fs ? " · false start +1.5 s" : ""}<br>Opponent (${L.name}): <b>${b.dFin === null ? "—" : bET.toFixed(2) + " s"}</b> · ${Math.round(b.dSpd)} km/h<br>Reaction: ${drag.rt === null ? "—" : drag.rt.toFixed(2) + " s"}<br>Reward: <b>+${pay} 🪙</b>${rec ? "<br><b>New record!</b>" : ""}`;
   state = "free"; $("#hud").hidden = true; $("#ctl").hidden = true; $("#tree").hidden = true; show("sDragRes");
 }
 $("#drAgain").onclick = () => startDrag(drag.level);
@@ -507,23 +507,23 @@ function hudDrag() {
   const d = $("#hDrift"); d.classList.remove("act");
   const pd = Math.max(0, Math.min(DRG, p.x + p.spec.L / 2)), bd = Math.max(0, Math.min(DRG, drag.bot.x + drag.bot.spec.L / 2));
   const tm = drag.phase >= 2 ? (p.dFin !== null ? p.dFin : drag.t) : 0;
-  d.innerHTML = `<small>ДРАГ · ${DLEV[drag.level].name}</small><b>${tm.toFixed(2)}</b><div class="tot">Ти ${Math.round(pd)} м · Суперник ${Math.round(bd)} м / ${DRG} м</div>`;
+  d.innerHTML = `<small>DRAG · ${DLEV[drag.level].name}</small><b>${tm.toFixed(2)}</b><div class="tot">You ${Math.round(pd)} m · Opponent ${Math.round(bd)} m / ${DRG} m</div>`;
 }
 
 /* ---------------- гонка ---------------- */
 const PERS = [
-  { name: "Агресор", skill: .985, sp: 1.0, ac: 1.0, mu: 1.0, br: 1.0, cm: 1.08, bm: 1.35, nit: .35, lp: 2.5, pa: .035, qa: .02, st: 0, lt: 0 },
-  { name: "Метроном", skill: .965, sp: 1.0, ac: .98, mu: 1.03, br: 1.0, cm: 1.0, bm: 1.0, nit: .8, lp: 30, fix: 1.2, pa: .01, qa: .005, st: 0, lt: 0 },
-  { name: "Спринтер", skill: .955, sp: .97, ac: 1.12, mu: .97, br: 1.0, cm: .95, bm: 1.1, nit: .3, lp: 6, pa: .03, qa: .02, st: .09, lt: -.05 },
-  { name: "Фінішер", skill: .93, sp: 1.03, ac: .94, mu: 1.0, br: 1.0, cm: 1.02, bm: 1.0, nit: .55, lp: 8, pa: .025, qa: .015, st: -.06, lt: .09 },
-  { name: "Обережний", skill: .95, sp: 1.04, ac: 1.0, mu: .94, br: 1.05, cm: .88, bm: .85, nit: .7, lp: 14, pa: .02, qa: .01, st: 0, lt: 0 },
-  { name: "Хаос", skill: .96, sp: 1.02, ac: 1.03, mu: 1.0, br: .95, cm: 1.1, bm: 1.2, nit: .25, lp: 1.6, pa: .075, qa: .05, st: .04, lt: .02 }
+  { name: "Aggressor", skill: .985, sp: 1.0, ac: 1.0, mu: 1.0, br: 1.0, cm: 1.08, bm: 1.35, nit: .35, lp: 2.5, pa: .035, qa: .02, st: 0, lt: 0 },
+  { name: "Metronome", skill: .965, sp: 1.0, ac: .98, mu: 1.03, br: 1.0, cm: 1.0, bm: 1.0, nit: .8, lp: 30, fix: 1.2, pa: .01, qa: .005, st: 0, lt: 0 },
+  { name: "Sprinter", skill: .955, sp: .97, ac: 1.12, mu: .97, br: 1.0, cm: .95, bm: 1.1, nit: .3, lp: 6, pa: .03, qa: .02, st: .09, lt: -.05 },
+  { name: "Finisher", skill: .93, sp: 1.03, ac: .94, mu: 1.0, br: 1.0, cm: 1.02, bm: 1.0, nit: .55, lp: 8, pa: .025, qa: .015, st: -.06, lt: .09 },
+  { name: "Careful", skill: .95, sp: 1.04, ac: 1.0, mu: .94, br: 1.05, cm: .88, bm: .85, nit: .7, lp: 14, pa: .02, qa: .01, st: 0, lt: 0 },
+  { name: "Chaos", skill: .96, sp: 1.02, ac: 1.03, mu: 1.0, br: .95, cm: 1.1, bm: 1.2, nit: .25, lp: 1.6, pa: .075, qa: .05, st: .04, lt: .02 }
 ];
 let persOff = 0;
 async function startRace(ti) {
   A.audioInit(); if (freeKind) { bankDrift(); document.body.classList.remove("free", "drag"); $("#tree").hidden = true; }
   if (ti !== curTrack || freeKind) await loadTrack(ti);
-  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Завантаження машин…"; await new Promise(r => setTimeout(r, 30));
+  state = "loading"; show("sLoad"); $("#loadTxt").textContent = "Loading cars…"; await new Promise(r => setTimeout(r, 30));
   await Promise.all(CARS.slice(0, CARS.findIndex(x => x.id === S.car) + 1).map(c => ensureCar(c.id)));
   laps = S.laps; spawn("race"); camNear(); try { renderer.compile(scene, camera); renderer.render(scene, camera); } catch (e) {} raceT = 0; countT = 4; countShown = -1; finishTimer = 0; wrongT = 0;
   hideAll(); $("#hud").hidden = false; $("#ctl").hidden = false; $("#count").hidden = true; state = "count";
@@ -540,12 +540,12 @@ function onLap(c) {
   if (c.lap >= 2 && !c.finished) {
     const lt = (raceT - c.lapStart) * 1000;
     if (!c.bestLap || lt < c.bestLap) c.bestLap = lt;
-    if (c === player) { banner("Коло " + (c.lap - 1) + ": " + fmtT(lt), 2200); A.beep(880, .12, .12); }
+    if (c === player) { banner("Lap " + (c.lap - 1) + ": " + fmtT(lt), 2200); A.beep(880, .12, .12); }
   }
   c.lapStart = raceT;
   if (c.lap > laps && !c.finished) {
     c.finished = true; c.finishT = raceT;
-    if (c === player) { state = "finish"; finishTimer = 2.4; banner("ФІНІШ!", 2400); A.beep(990, .5, .2); flash(); }
+    if (c === player) { state = "finish"; finishTimer = 2.4; banner("FINISH!", 2400); A.beep(990, .5, .2); flash(); }
   }
 }
 function flash() { const f = $("#flash"); f.style.opacity = .5; setTimeout(() => (f.style.opacity = 0), 120); }
@@ -604,7 +604,7 @@ const EYE = { city: [-.3, -.2, .82], sport: [-.1, -.2, .83], muscle: [-.1, -.2, 
 function camNear() { document.body.classList.toggle("cock", camMode === 1); camera.near = camMode === 1 ? .2 : .3; fpsHold = performance.now() + 3000; fpsAcc = fpsN = 0; camera.updateProjectionMatrix(); if (player) { const pm = player.model, ins = camMode === 1 && pm.hasInt; pm.body.visible = !ins; pm.wheels.forEach(w => (w.pivot.visible = !ins)); pm.root.visible = true; } }
 function cycleCam() {
   camMode = (camMode + 1) % 4; if (player) player.model.root.visible = true;
-  if (camMode === 3 && player) { orbA = player.a + Math.PI; orbP = .35; orbSnap = true; banner("Огляд 360°: крути пальцем екран, двома пальцями — наближення", 2600); }
+  if (camMode === 3 && player) { orbA = player.a + Math.PI; orbP = .35; orbSnap = true; banner("360° view: drag to rotate, pinch to zoom", 2600); }
   lookYaw = lookPitch = 0; camNear();
 }
 /* вільний огляд: перетягуй пальцем по екрану (поза кнопками) */
@@ -721,7 +721,7 @@ function hudFree() {
   $("#hSpeed b").textContent = Math.round(p.speed * 3.6); $("#hGear").textContent = p.vf < -.5 ? "R" : p.gear;
   const nb = $("#hNitro"); nb.firstElementChild.style.width = Math.round(p.nitro * 100) + "%"; nb.classList.toggle("on", p.boostT > 0);
   const d = $("#hDrift"); d.classList.toggle("act", dr.cur > 0 && dr.idle < .05);
-  d.innerHTML = `<small>ДРИФТ</small><b>${Math.round(dr.cur)}</b>${dr.cur > 0 ? `<em>×${dr.mult}</em>` : ""}<div class="tot">Всього: ${dr.session} · 🪙 +${dr.earned} · рекорд ${S.driftBest}</div>`;
+  d.innerHTML = `<small>DRIFT</small><b>${Math.round(dr.cur)}</b>${dr.cur > 0 ? `<em>×${dr.mult}</em>` : ""}<div class="tot">Total: ${dr.session} · 🪙 +${dr.earned} · best ${S.driftBest}</div>`;
 }
 function hud(dt) {
   const p = player; if (!p) return;
@@ -729,7 +729,7 @@ function hud(dt) {
   const sp = Math.round(p.speed * 3.6); $("#hSpeed b").textContent = sp; $("#hGear").textContent = p.vf < -.5 ? "R" : p.gear;
   const nb = $("#hNitro"); nb.firstElementChild.style.width = Math.round(p.nitro * 100) + "%"; nb.classList.toggle("on", p.boostT > 0);
   $("#hPos").innerHTML = `<b>${racePlace(p) || 6}</b><span>/${cars.length}</span>`;
-  $("#hLap").textContent = "Коло " + Math.min(Math.max(p.lap, 1), laps) + "/" + laps;
+  $("#hLap").textContent = "Lap " + Math.min(Math.max(p.lap, 1), laps) + "/" + laps;
   $("#hTime").textContent = fmtT(raceT * 1000).replace(/^0:/, "0:");
   if (hudT > .06) {
     hudT = 0; if (!miniBg) buildMini();
@@ -768,28 +768,28 @@ function garageModel() {
 function garageUI() {
   const shop = gMode === "shop", sp = CARS.find(x => x.id === gSel);
   const work = gMode === "work", gi = inst(gUid);
-  $("#gName").textContent = (shop ? "Автосалон · " : work ? "Майстерня · " : "Гараж · ") + sp.name + (work ? " · Stage " + stageOf(gi.up) : " · " + sp.desc);
+  $("#gName").textContent = (shop ? "Showroom · " : work ? "Workshop · " : "Garage · ") + sp.name + (work ? " · Stage " + stageOf(gi.up) : " · " + sp.desc);
   const tabs = $("#carTabs"); tabs.innerHTML = "";
-  if (shop) CARS.forEach(c => { const n = S.garage.filter(g => g.id === c.id).length, b = document.createElement("button"); b.className = "tab" + (c.id === gSel ? " on" : ""); b.innerHTML = `${c.name}<small>🪙 ${shopPrice(c)}${n ? " · у вас " + n : ""}</small>`; b.onclick = () => { gSel = c.id; shopColor = null; garageModel(); garageUI(); }; tabs.appendChild(b); });
-  else S.garage.forEach(g => { const c = CARS.find(x => x.id === g.id), same = S.garage.filter(x => x.id === g.id), b = document.createElement("button"); b.className = "tab" + (g.uid === gUid ? " on" : ""); b.innerHTML = `${c.name}${same.length > 1 ? " #" + (same.indexOf(g) + 1) : ""}<small>${S.sel === g.uid ? "обрана" : "є"}${stageOf(g.up) ? " · St." + stageOf(g.up) : ""}</small>`; b.onclick = () => { gUid = g.uid; gSel = g.id; garageModel(); garageUI(); }; tabs.appendChild(b); });
+  if (shop) CARS.forEach(c => { const n = S.garage.filter(g => g.id === c.id).length, b = document.createElement("button"); b.className = "tab" + (c.id === gSel ? " on" : ""); b.innerHTML = `${c.name}<small>🪙 ${shopPrice(c)}${n ? " · owned " + n : ""}</small>`; b.onclick = () => { gSel = c.id; shopColor = null; garageModel(); garageUI(); }; tabs.appendChild(b); });
+  else S.garage.forEach(g => { const c = CARS.find(x => x.id === g.id), same = S.garage.filter(x => x.id === g.id), b = document.createElement("button"); b.className = "tab" + (g.uid === gUid ? " on" : ""); b.innerHTML = `${c.name}${same.length > 1 ? " #" + (same.indexOf(g) + 1) : ""}<small>${S.sel === g.uid ? "selected" : "owned"}${stageOf(g.up) ? " · St." + stageOf(g.up) : ""}</small>`; b.onclick = () => { gUid = g.uid; gSel = g.id; garageModel(); garageUI(); }; tabs.appendChild(b); });
   const bar = (n, v) => `<div class="stat"><b>${n}</b><div class="bar"><i style="width:${Math.round(v * 100)}%"></i></div></div>`;
   const ts = shop ? sp : tuned(sp, gi.up);
-  $("#gStats").innerHTML = bar("Швидкість", (ts.vmax - 40) / 50) + bar("Розгін", (ts.acc - 6) / 11) + bar("Зчеплення", (ts.mu - .8) / .6);
+  $("#gStats").innerHTML = bar("Speed", (ts.vmax - 40) / 50) + bar("Acceleration", (ts.acc - 6) / 11) + bar("Grip", (ts.mu - .8) / .6);
   const hb = $("#hpBox"), hp0 = hpOf(sp, null), hp1 = hpOf(sp, shop ? null : gi.up);
-  hb.innerHTML = `<b>${hp1} hp</b>${hp1 > hp0 ? `<em>+${hp1 - hp0}</em>` : ""}<small>Макс. ${Math.round(ts.vmax * 3.6)} км/год</small><small>Розгін ×${(ts.acc / sp.acc).toFixed(2)}</small>`;
+  hb.innerHTML = `<b>${hp1} hp</b>${hp1 > hp0 ? `<em>+${hp1 - hp0}</em>` : ""}<small>Max ${Math.round(ts.vmax * 3.6)} km/h</small><small>Accel ×${(ts.acc / sp.acc).toFixed(2)}</small>`;
   const ul = $("#upList"); ul.innerHTML = "";
   if (work) UPS.forEach(u => {
     const lv = (gi.up && gi.up[u.k]) | 0, max = lv >= UP_MAX, cost = upCost(sp, lv), d = document.createElement("div"); d.className = "up";
     d.innerHTML = `<b>${u.name}</b><span class="pips">${"●".repeat(lv)}${"○".repeat(UP_MAX - lv)}</span><small>${u.desc}</small>`;
-    const bt = document.createElement("button"); bt.textContent = max ? "МАКС" : "Купити · 🪙 " + cost; bt.disabled = max || S.coins < cost;
+    const bt = document.createElement("button"); bt.textContent = max ? "MAX" : "Buy · 🪙 " + cost; bt.disabled = max || S.coins < cost;
     bt.onclick = () => { if (max || S.coins < cost) return; S.coins -= cost; gi.up = Object.assign({}, gi.up, { [u.k]: lv + 1 }); save(); updCoins(); garageUI(); };
     d.appendChild(bt); ul.appendChild(d);
   });
   const sw = $("#swatches"); sw.innerHTML = "";
   COLORS.forEach(c => { const b = document.createElement("button"); b.className = "sw" + (gColor(sp) === c ? " on" : ""); b.style.background = c; b.onclick = () => { if (shop) shopColor = c; else { inst(gUid).color = c; if (S.sel === gUid) applySel(); save(); } if (prevModel) setCarColor(prevModel, c); garageUI(); }; sw.appendChild(b); });
   const act = $("#gAct");
-  if (shop) { act.textContent = "Купити за 🪙 " + shopPrice(sp); act.disabled = S.coins < shopPrice(sp); }
-  else { act.textContent = S.sel === gUid ? "Обрана ✓" : "Обрати"; act.disabled = S.sel === gUid; }
+  if (shop) { act.textContent = "Buy for 🪙 " + shopPrice(sp); act.disabled = S.coins < shopPrice(sp); }
+  else { act.textContent = S.sel === gUid ? "Selected ✓" : "Select"; act.disabled = S.sel === gUid; }
 }
 $("#gAct").onclick = () => {
   const sp = CARS.find(x => x.id === gSel);
@@ -821,9 +821,9 @@ function showResults() {
   if (!S.best[id] || t < S.best[id]) { S.best[id] = Math.round(t); rec = true; }
   if (player.bestLap && (!S.bestLap[id] || player.bestLap < S.bestLap[id])) { S.bestLap[id] = Math.round(player.bestLap); lapRec = true; }
   S.coins += pay; save();
-  $("#rTitle").textContent = place === 1 ? "🏆 Перше місце!" : place + " місце";
-  $("#rList").innerHTML = ord.map((c, i) => `<div class="resRow ${c === player ? "me" : ""}"><b>${i + 1}</b><span>${c.name}</span><em>${c.finished ? fmtT(c.finishT * 1000) : "не фінішував"}</em></div>`).join("");
-  $("#rInfo").innerHTML = `Нагорода: <b>+${pay} 🪙</b> · найкраще коло: ${fmtT(player.bestLap)}${rec ? "<br><b>Новий рекорд траси!</b>" : ""}${lapRec && !rec ? "<br><b>Новий рекорд кола!</b>" : ""}`;
+  $("#rTitle").textContent = place === 1 ? "🏆 1st place!" : place + (place===2?"nd":place===3?"rd":"th") + " place";
+  $("#rList").innerHTML = ord.map((c, i) => `<div class="resRow ${c === player ? "me" : ""}"><b>${i + 1}</b><span>${c.name}</span><em>${c.finished ? fmtT(c.finishT * 1000) : "did not finish"}</em></div>`).join("");
+  $("#rInfo").innerHTML = `Reward: <b>+${pay} 🪙</b> · best lap: ${fmtT(player.bestLap)}${rec ? "<br><b>New track record!</b>" : ""}${lapRec && !rec ? "<br><b>New lap record!</b>" : ""}`;
   state = "results"; $("#hud").hidden = true; $("#ctl").hidden = true; show("sRes");
 }
 
@@ -836,7 +836,7 @@ function simulate(dt) {
     if (n !== countShown) {
       countShown = n; const el = $("#count");
       if (n >= 1) { el.textContent = n; el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; A.beep(520, .18); }
-      else if (n === 0) { el.textContent = "ПОЇХАЛИ!"; el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; A.beep(1040, .5, .22); state = "race"; raceT = 0; setTimeout(() => ($("#count").hidden = true), 900); }
+      else if (n === 0) { el.textContent = "GO!"; el.hidden = false; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; A.beep(1040, .5, .22); state = "race"; raceT = 0; setTimeout(() => ($("#count").hidden = true), 900); }
     }
   }
   if (state === "finish") { finishTimer -= dt; if (finishTimer <= 0) showResults(); }
@@ -847,7 +847,7 @@ function simulate(dt) {
   // неправильний напрямок
   if (player && (state === "race")) {
     const tg = Math.atan2(T.tz[player.idx], T.tx[player.idx]);
-    if (player.vf > 6 && Math.abs(angDiff(player.a, tg)) > 2.1) { wrongT += dt; if (wrongT > 1.2) { banner("Не туди! Розвернись", 1000); wrongT = .6; } } else wrongT = 0;
+    if (player.vf > 6 && Math.abs(angDiff(player.a, tg)) > 2.1) { wrongT += dt; if (wrongT > 1.2) { banner("Wrong way! Turn around", 1000); wrongT = .6; } } else wrongT = 0;
   }
 }
 const TAU = Math.PI * 2;
@@ -905,7 +905,7 @@ async function boot() {
   $("#ver").textContent = "v" + BUILD; checkUpdate();
   A.setSound(S.sound);
   await loadTrack(clamp(S.last | 0, 0, TRACK_DEFS.length - 1));
-  $("#loadTxt").textContent = "Завантаження машин…"; await ensureCar(S.car);
+  $("#loadTxt").textContent = "Loading cars…"; await ensureCar(S.car);
   spawn("demo"); state = "menu"; updCoins(); show("sMain");
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     const had = !!navigator.serviceWorker.controller;

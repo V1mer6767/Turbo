@@ -3,9 +3,9 @@ import * as THREE from "../vendor/three.module.min.js";
 import { THEMES, makeSky } from "./world.js";
 
 export const ARENAS = [
-  { id: "lot", name: "Велика парковка", sub: "Порожній майданчик, конуси, шини, контейнери", theme: "sunset", half: 350 },
-  { id: "city", name: "Нічне місто", sub: "Квартали, перехрестя, неонові вікна", theme: "night", half: 262 },
-  { id: "drag", name: "Драг-стріп", sub: "Чверть милі", theme: "sunset", half: 520, hidden: true }
+  { id: "lot", name: "Big parking lot", sub: "Empty lot, cones, tires, containers", theme: "sunset", half: 350 },
+  { id: "city", name: "Night city", sub: "Blocks, intersections, neon windows", theme: "night", half: 262 },
+  { id: "drag", name: "Drag strip", sub: "Quarter mile", theme: "sunset", half: 520, hidden: true }
 ];
 
 const rnd = (a, b) => a + Math.random() * (b - a);

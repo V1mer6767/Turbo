@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="uk">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>TURBO — гонки</title>
+<title>TURBO — racing</title>
 <meta name="theme-color" content="#0b0d12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -22,10 +22,10 @@
 <div id="hud" hidden>
   <div id="hPos"><b>6</b><span>/6</span></div>
   <div id="hDrift"></div>
-  <div id="hLap">Коло 1/3</div>
+  <div id="hLap">Lap 1/3</div>
   <div id="hTime">0:00.00</div>
   <canvas id="mini" width="280" height="280"></canvas>
-  <div id="hSpeed"><b>0</b><i>км/год</i><span id="hGear">1</span></div>
+  <div id="hSpeed"><b>0</b><i>km/h</i><span id="hGear">1</span></div>
   <div id="hNitro"><div></div></div>
   <button id="bPause" class="mini">❚❚</button>
   <button id="bCam" class="mini">📷</button>
@@ -34,10 +34,10 @@
 <div id="ctl" hidden>
   <button class="c steer" data-k="left">◀</button>
   <button class="c steer" data-k="right">▶</button>
-  <button class="c pedal" data-k="gas" id="cGas">ГАЗ</button>
-  <button class="c pedal brake" data-k="brake">СТОП</button>
-  <button class="c small" data-k="drift">ДРИФТ</button>
-  <button class="c small nitro" data-k="nitro">НІТРО</button>
+  <button class="c pedal" data-k="gas" id="cGas">GAS</button>
+  <button class="c pedal brake" data-k="brake">BRAKE</button>
+  <button class="c small" data-k="drift">DRIFT</button>
+  <button class="c small nitro" data-k="nitro">NITRO</button>
 </div>
 
 <div id="count" hidden></div>
@@ -45,81 +45,81 @@
 <div id="banner" hidden></div>
 <div id="flash"></div>
 
-<div class="screen" id="sLoad"><div class="logo">TURBO</div><div class="sub" id="loadTxt">Завантаження…</div><div class="spin"></div></div>
+<div class="screen" id="sLoad"><div class="logo">TURBO</div><div class="sub" id="loadTxt">Loading…</div><div class="spin"></div></div>
 
 <div class="screen shade" id="sMain" hidden>
   <div class="logo big">TURBO<span>RACING</span></div>
   <div class="coins">🪙 <b id="mCoins">0</b></div>
   <div class="menu grid">
-    <button class="btn main" id="mPlay">Гонка</button>
-    <button class="btn" id="mDrag">Драг-рейсинг</button>
-    <button class="btn" id="mFree">Вільна їзда · дрифт</button>
-    <button class="btn" id="mGarage">Гараж</button>
-    <button class="btn" id="mShop">Автосалон</button>
-    <button class="btn" id="mWork">Майстерня</button>
-    <button class="btn" id="mSet">Налаштування</button>
+    <button class="btn main" id="mPlay">Race</button>
+    <button class="btn" id="mDrag">Drag racing</button>
+    <button class="btn" id="mFree">Free roam · drift</button>
+    <button class="btn" id="mGarage">Garage</button>
+    <button class="btn" id="mShop">Showroom</button>
+    <button class="btn" id="mWork">Workshop</button>
+    <button class="btn" id="mSet">Settings</button>
   </div>
   <div class="ver" id="ver"></div>
 </div>
 
 <div class="screen shade" id="sTracks" hidden>
-  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Обери трасу</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Choose a track</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
   <div class="cards" id="trackList"></div>
 </div>
 
 <div class="screen shade" id="sFree" hidden>
-  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Вільна їзда</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Free roam</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
   <div class="cards" id="freeList"></div>
 </div>
 
 <div class="screen shade" id="sDrag" hidden>
-  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Драг-рейсинг · чверть милі</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Drag racing · quarter mile</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
   <div class="cards" id="dragList"></div>
 </div>
 
 <div class="screen shade" id="sDragRes" hidden>
-  <h2 class="big2" id="drTitle">Результат</h2>
+  <h2 class="big2" id="drTitle">Result</h2>
   <div class="drBox" id="drBox"></div>
   <div class="menu row">
-    <button class="btn main" id="drAgain">Ще раз</button>
-    <button class="btn" id="drOther">Суперники</button>
-    <button class="btn" id="drMenu">В меню</button>
+    <button class="btn main" id="drAgain">Again</button>
+    <button class="btn" id="drOther">Opponents</button>
+    <button class="btn" id="drMenu">Menu</button>
   </div>
 </div>
 
 <div class="screen" id="sGarage" hidden>
-  <div class="head"><button class="back" data-back="sMain">‹</button><h2 id="gName">Гараж</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2 id="gName">Garage</h2><div class="coins">🪙 <b class="cN">0</b></div></div>
   <div id="hpBox"></div>
   <div class="garBottom">
     <div class="carTabs" id="carTabs"></div>
     <div class="stats" id="gStats"></div>
     <div class="swatches" id="swatches"></div>
     <div class="upList" id="upList"></div>
-    <button class="btn main" id="gAct">Обрати</button>
+    <button class="btn main" id="gAct">Select</button>
   </div>
 </div>
 
 <div class="screen shade" id="sSet" hidden>
-  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Налаштування</h2><span></span></div>
+  <div class="head"><button class="back" data-back="sMain">‹</button><h2>Settings</h2><span></span></div>
   <div class="setList" id="setList"></div>
 </div>
 
 <div class="screen shade" id="sPause" hidden>
-  <h2 class="big2">Пауза</h2>
+  <h2 class="big2">Paused</h2>
   <div class="menu">
-    <button class="btn main" id="pResume">Продовжити</button>
-    <button class="btn" id="pRestart">Заново</button>
-    <button class="btn" id="pMenu">В меню</button>
+    <button class="btn main" id="pResume">Resume</button>
+    <button class="btn" id="pRestart">Restart</button>
+    <button class="btn" id="pMenu">Menu</button>
   </div>
 </div>
 
 <div class="screen shade" id="sRes" hidden>
-  <h2 class="big2" id="rTitle">1 місце</h2>
+  <h2 class="big2" id="rTitle">1st place</h2>
   <div class="resList" id="rList"></div>
   <div class="resInfo" id="rInfo"></div>
   <div class="menu row">
-    <button class="btn main" id="rAgain">Ще раз</button>
-    <button class="btn" id="rMenu">В меню</button>
+    <button class="btn main" id="rAgain">Again</button>
+    <button class="btn" id="rMenu">Menu</button>
   </div>
 </div>
 

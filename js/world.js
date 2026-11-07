@@ -193,7 +193,7 @@ export function buildWorld(def, quality) {
   const beamLen = def.w + 8;
   for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(1, 8, 1), steel); p.position.set(0, 4, s * (beamLen / 2)); p.castShadow = !!quality.shadow; gantry.add(p); }
   const beam = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.6, beamLen), steel); beam.position.set(0, 8, 0); beam.castShadow = !!quality.shadow; gantry.add(beam);
-  const ban = canvasTex(512, 64, (g, w, h) => { g.fillStyle = "#c92a2a"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.font = "bold 44px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("СТАРТ · ФІНІШ", w / 2, h / 2 + 2); });
+  const ban = canvasTex(512, 64, (g, w, h) => { g.fillStyle = "#c92a2a"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.font = "bold 44px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("START · FINISH", w / 2, h / 2 + 2); });
   for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.PlaneGeometry(def.w + 4, 1.4), new THREE.MeshBasicMaterial({ map: ban })); b.position.set(s * .65, 8, 0); b.rotation.y = s > 0 ? Math.PI / 2 : -Math.PI / 2; gantry.add(b); }
   root.add(gantry);
 

@@ -1,4 +1,4 @@
-const CACHE = "turbo-cache-v45";
+const CACHE = "turbo-cache-v46";
 const ASSETS = ["./", "index.html", "style.css", "manifest.json", "js/main.js", "js/world.js", "js/car.js", "js/trackmath.js", "js/audio.js", "js/models.js", "js/arena.js", "js/engine-worklet.js", "vendor/jsm/GLTFLoader.js", "vendor/jsm/BufferGeometryUtils.js", "vendor/three.module.min.js", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-180.png", "icons/favicon-32.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(u => fetch(new Request(u, { cache: "reload" })).then(r => { if (!r.ok) throw new Error(u); return c.put(u, r); })))).then(() => self.skipWaiting()));

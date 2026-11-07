@@ -3,14 +3,14 @@ import { hasCar, buildGLB } from "./models.js";
 import { nearest, clamp, lerp, angDiff } from "./trackmath.js";
 
 export const CARS = [
-  { id: "city", name: "Сіті", kind: "sedan", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.4, steer: 1, L: 4.99, W: 1.95, roof: 1.45, color: "#3b82f6", snd: 1.0, desc: "Надійний старт" },
-  { id: "sport", name: "Спорт", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.55, steer: 1, L: 4.8, W: 1.9, roof: 1.39, color: "#ef4444", snd: 1.15, desc: "Швидкий і слухняний" },
-  { id: "muscle", name: "Мускул", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.42, steer: 1, L: 4.53, W: 1.95, roof: 1.2, color: "#f59e0b", snd: .72, desc: "Потужний, любить зноси" },
-  { id: "p930", name: "Турбо-Клас", kind: "coupe", price: 1900, vmax: 68, acc: 12.8, brake: 13, mu: 1.45, steer: 1.02, L: 4.29, W: 1.78, roof: 1.32, color: "#f59e0b", snd: 1.1, desc: "Легенда з турбіною" },
-  { id: "gt", name: "ГТ", kind: "gt", price: 2400, vmax: 76, acc: 14, brake: 14, mu: 1.62, steer: 1, L: 4.66, W: 1.97, roof: 1.28, color: "#dc2626", snd: 1.05, desc: "V12, дальнобійний" },
-  { id: "f40", name: "Ф-40", kind: "gt", price: 2800, vmax: 77, acc: 14.4, brake: 14, mu: 1.6, steer: 1.0, L: 4.36, W: 1.97, roof: 1.13, color: "#dc2626", snd: 1.2, desc: "Турбо V8, без компромісів" },
-  { id: "huracan", name: "Бик", kind: "hyper", price: 3200, vmax: 79, acc: 14.8, brake: 14.5, mu: 1.72, steer: 1.03, L: 4.52, W: 1.93, roof: 1.14, color: "#84cc16", snd: 1.2, desc: "V10, голосний і злий" },
-  { id: "hyper", name: "Гіпер", kind: "hyper", price: 3800, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.57, W: 1.97, roof: 1.2, color: "#a855f7", snd: 1.3, desc: "Король траси" }
+  { id: "city", name: "BMW M5", kind: "sedan", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.4, steer: 1, L: 4.99, W: 1.95, roof: 1.45, color: "#3b82f6", snd: 1.0, desc: "Reliable starter" },
+  { id: "sport", name: "BMW M4", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.55, steer: 1, L: 4.8, W: 1.9, roof: 1.39, color: "#ef4444", snd: 1.15, desc: "Fast and obedient" },
+  { id: "muscle", name: "McLaren 570S", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.42, steer: 1, L: 4.53, W: 1.95, roof: 1.2, color: "#f59e0b", snd: .72, desc: "Powerful, loves to slide" },
+  { id: "p930", name: "Porsche 911", kind: "coupe", price: 1900, vmax: 68, acc: 12.8, brake: 13, mu: 1.45, steer: 1.02, L: 4.29, W: 1.78, roof: 1.32, color: "#f59e0b", snd: 1.1, desc: "Turbocharged legend" },
+  { id: "gt", name: "Ferrari 812", kind: "gt", price: 2400, vmax: 76, acc: 14, brake: 14, mu: 1.62, steer: 1, L: 4.66, W: 1.97, roof: 1.28, color: "#dc2626", snd: 1.05, desc: "V12 grand tourer" },
+  { id: "f40", name: "Ferrari F40", kind: "gt", price: 2800, vmax: 77, acc: 14.4, brake: 14, mu: 1.6, steer: 1.0, L: 4.36, W: 1.97, roof: 1.13, color: "#dc2626", snd: 1.2, desc: "Twin-turbo V8, no compromises" },
+  { id: "huracan", name: "Lamborghini Huracán", kind: "hyper", price: 3200, vmax: 79, acc: 14.8, brake: 14.5, mu: 1.72, steer: 1.03, L: 4.52, W: 1.93, roof: 1.14, color: "#84cc16", snd: 1.2, desc: "V10, loud and angry" },
+  { id: "hyper", name: "Ferrari 488 Pista", kind: "hyper", price: 3800, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.57, W: 1.97, roof: 1.2, color: "#a855f7", snd: 1.3, desc: "King of the track" }
 ];
 export const COLORS = ["#3b82f6", "#ef4444", "#f59e0b", "#22c55e", "#a855f7", "#f4f4f5", "#111827", "#14b8a6", "#ec4899"];
 const WB = 2.7;
@@ -98,10 +98,10 @@ export function setCarColor(m, color) { m.paint.color.set(color); }
 
 /* ---------------- прокачка (майстерня) ---------------- */
 export const UPS = [
-  { k: "eng", name: "Двигун", desc: "+потужність, +макс. швидкість" },
-  { k: "tire", name: "Шини і підвіска", desc: "+зчеплення на треку" },
-  { k: "gear", name: "Трансмісія · драг", desc: "+розгін, трохи менша макс." },
-  { k: "drift", name: "Дрифт-кіт", desc: "легше зривати в занос" }
+  { k: "eng", name: "Engine", desc: "+power, +top speed" },
+  { k: "tire", name: "Tires & suspension", desc: "+grip on track" },
+  { k: "gear", name: "Transmission · drag", desc: "+acceleration, slightly lower top speed" },
+  { k: "drift", name: "Drift kit", desc: "easier to break into a slide" }
 ];
 export const UP_MAX = 3;
 export const upCost = (sp, lvl) => Math.round((250 + sp.price * .3) * Math.pow(1.9, lvl) / 10) * 10;
@@ -117,7 +117,7 @@ export function tuned(sp, up) {
 /* ---------------- фізика ---------------- */
 export class Car {
   constructor(spec, opts = {}) {
-    this.spec = spec; this.isPlayer = !!opts.player; this.name = opts.name || "Гонщик"; this.color = opts.color || spec.color;
+    this.spec = spec; this.isPlayer = !!opts.player; this.name = opts.name || "Racer"; this.color = opts.color || spec.color;
     this.x = this.z = this.a = this.vx = this.vz = this.y = 0;
     this.steerS = 0; this.nitro = .3; this.boostT = 0; this.idx = 0; this.nr = { idx: 0, lat: 0, dist: 0, s: 0, h: 0 };
     this.lap = 0; this.lapStart = 0; this.bestLap = 0; this.finished = false; this.finishT = 0;
