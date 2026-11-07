@@ -7,7 +7,7 @@ import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 import { QUAL, QUAL_LIST, Post, Rain, Drops, applyRain, addHeadlights } from "./gfx.js";
 
-const BUILD = 39;
+const BUILD = 40;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -18,6 +18,7 @@ try { Object.assign(S, JSON.parse(localStorage.getItem(SK) || "{}")); } catch (e
 if (!S.garage) { S.garage = (S.owned || ["city"]).map(id => ({ uid: id, id, color: (S.colors || {})[id] || null })); S.sel = S.car; }
 if (!S.garage.some(g => g.uid === S.sel)) S.sel = S.garage[0].uid;
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
+if (S.quality === "cinematic") S.quality = "extreme";
 const qual = () => QUAL[S.quality] || QUAL.mid;
 
 /* ---------------- рендер ---------------- */
@@ -897,7 +898,7 @@ function frame(now) {
   if (rain) rain.update(now / 1000, camera.position, player ? { x: player.vx, z: player.vz } : { x: 0, z: 0 });
   if (drops) drops.update(dt, rainOn && state !== "menu" && state !== "garage" && state !== "loading" ? (camMode === 1 ? 1 : .35) : 0, player ? player.speed * 3.6 : 0);
   { const on = player && (state === "race" || state === "free" || state === "finish"), s01 = on ? clamp((player.speed * 3.6 - 110) / 200, 0, 1) + (player.boostT > 0 ? .3 : 0) : 0;
-    if (!post.render(S.quality, scene, camera, dt, Math.min(1.2, s01), now / 1000)) renderer.render(scene, camera); }
+    if (!post.render(S.quality, scene, camera, dt, Math.min(1.2, s01), now / 1000, state === "garage" ? 6.6 : 0)) renderer.render(scene, camera); }
   if (interp) restoreInterp();
   // динамічна роздільність
   if (state === "race" || state === "free") {

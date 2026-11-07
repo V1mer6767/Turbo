@@ -1,3 +1,4 @@
+import { asphaltMaps } from "./gfx.js";
 import * as THREE from "../vendor/three.module.min.js";
 import { mergeGeometries } from "../vendor/jsm/BufferGeometryUtils.js";
 import { buildCenterline, nearest, groundH, hills, smooth, lerp, clamp } from "./trackmath.js";
@@ -160,6 +161,7 @@ export function buildWorld(def, quality) {
   const hw = T.halfW;
   const rt = roadTexture(); rt.repeat.set(1, 1); rt.anisotropy = ANISO;
   const road = ribbon(-hw, hw, .02, new THREE.MeshStandardMaterial({ map: rt, roughness: th.lamps ? .55 : th.ground[0] > 200 ? .75 : .88, metalness: 0, envMapIntensity: th.lamps ? 1.6 : 1, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 24);
+  { const am = asphaltMaps(ANISO); am.normal.repeat.set(2 * hw / 1.3, 24 / 1.3); am.rough.repeat.copy(am.normal.repeat); road.material.normalMap = am.normal; road.material.normalScale.set(.75, .75); road.material.roughnessMap = am.rough; road.material.needsUpdate = true; }
   root.add(road);
   const kt = kerbTexture(); kt.repeat.set(1, 1);
   const kmat = new THREE.MeshStandardMaterial({ map: kt, roughness: .7, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
