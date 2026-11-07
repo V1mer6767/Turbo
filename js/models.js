@@ -2,7 +2,7 @@
 import * as THREE from "../vendor/three.module.min.js";
 import { GLTFLoader } from "../vendor/jsm/GLTFLoader.js";
 
-export const MODEL_FILE = { city: "m5", sport: "m4", muscle: "mc570", gt: "f812", hyper: "f488" };
+export const MODEL_FILE = { city: "m5", sport: "m4", muscle: "mc570", gt: "f812", hyper: "f488", huracan: "huracan", p930: "porsche", f40: "f40" };
 const loader = new GLTFLoader(), tpl = {}, pend = {};
 
 function prepare(g) {
