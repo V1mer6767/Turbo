@@ -7,7 +7,7 @@ import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 import { QUAL, QUAL_LIST, Post, Rain, Drops, applyRain, addHeadlights } from "./gfx.js";
 
-const BUILD = 41;
+const BUILD = 42;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -124,7 +124,7 @@ function playerInput() {
 }
 
 /* ---------------- екрани ---------------- */
-const SCREENS = ["sLoad", "sMain", "sTracks", "sFree", "sGarage", "sSet", "sPause", "sRes", "sDrag", "sDragRes"];
+const SCREENS = ["sCheat", "sLoad", "sMain", "sTracks", "sFree", "sGarage", "sSet", "sPause", "sRes", "sDrag", "sDragRes"];
 function show(id) { SCREENS.forEach(s => $("#" + s).hidden = s !== id); }
 function hideAll() { SCREENS.forEach(s => $("#" + s).hidden = true); }
 $$("[data-back]").forEach(b => b.addEventListener("click", () => toMenu(b.dataset.back)));
@@ -153,6 +153,8 @@ $("#mDrag").onclick = () => { A.audioInit(); toMenu("sDrag"); };
 $("#mWork").onclick = () => { A.audioInit(); enterGarage("work"); };
 $("#mShop").onclick = () => { A.audioInit(); enterGarage("shop"); };
 $("#mSet").onclick = () => toMenu("sSet");
+$("#mCheat").onclick = () => { updCoins(); toMenu("sCheat"); };
+$$("#cheatList [data-add]").forEach(b => b.onclick = () => { S.coins += +b.dataset.add; save(); updCoins(); });
 
 function buildTrackList() {
   const el = $("#trackList"); el.innerHTML = "";
