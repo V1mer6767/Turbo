@@ -7,7 +7,7 @@ import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
 import { QUAL, QUAL_LIST, Post, Rain, Drops, applyRain, addHeadlights } from "./gfx.js";
 
-const BUILD = 40;
+const BUILD = 41;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -895,6 +895,7 @@ function frame(now) {
   { const on = player && (state === "race" || state === "free" || state === "finish"), v = on ? clamp((player.speed * 3.6 - 130) / 170, 0, 1) * .75 + (player.boostT > 0 ? .35 : 0) : 0, r = Math.round(Math.min(1, v) * 20) / 20;
     if (r !== fxS) { fxS = r; $("#fxSpd").style.opacity = r; } const nt = on && player.boostT > 0; if (nt !== fxN) { fxN = nt; document.body.classList.toggle("nit", nt); } }
   A.audioFrame(player, state === "race" || state === "finish" || state === "free" ? true : (state === "count" ? "idle" : false));
+  if (W && W.sky && W.sky.material.uniforms.uT) W.sky.material.uniforms.uT.value = now / 1000;
   if (rain) rain.update(now / 1000, camera.position, player ? { x: player.vx, z: player.vz } : { x: 0, z: 0 });
   if (drops) drops.update(dt, rainOn && state !== "menu" && state !== "garage" && state !== "loading" ? (camMode === 1 ? 1 : .35) : 0, player ? player.speed * 3.6 : 0);
   { const on = player && (state === "race" || state === "free" || state === "finish"), s01 = on ? clamp((player.speed * 3.6 - 110) / 200, 0, 1) + (player.boostT > 0 ? .3 : 0) : 0;

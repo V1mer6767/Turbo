@@ -112,7 +112,7 @@ export function applyRain(W, on) {
   if (W.sun) W.sun.intensity *= .45;
   if (W.hemi) { W.hemi.intensity *= .9; W.hemi.color.lerp(new THREE.Color(.6, .65, .72), .6); }
   const u = W.sky && W.sky.material.uniforms;
-  if (u) { const grey = new THREE.Color(.36, .4, .46); u.top.value.lerp(grey, .8); u.hor.value.lerp(new THREE.Color(.55, .6, .66), .8); u.sunCol.value.multiplyScalar(.12); u.stars.value = 0; }
+  if (u) { const grey = new THREE.Color(.36, .4, .46); u.top.value.lerp(grey, .8); u.hor.value.lerp(new THREE.Color(.55, .6, .66), .8); u.sunCol.value.multiplyScalar(.12); u.stars.value = 0; if (u.cover) { u.cover.value = .9; u.cb.value *= .7; } }
   const road = W.road && W.road.material;
   if (road) { road.roughness = Math.max(.12, road.roughness * .38); road.envMapIntensity = (road.envMapIntensity || 1) * 2.3; road.color.multiplyScalar(.62); road.needsUpdate = true; }
   sc.traverse(o => { if (o.isMesh && o.material && o !== W.road && o.material.isMeshStandardMaterial && !o.userData.keep && o.material.map && o.material.roughness > .8) { o.material = o.material.clone(); o.material.color.multiplyScalar(.7); o.material.roughness = .7; } });

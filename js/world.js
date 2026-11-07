@@ -1,6 +1,6 @@
 import { asphaltMaps } from "./gfx.js";
 import * as THREE from "../vendor/three.module.min.js";
-import { mergeGeometries } from "../vendor/jsm/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "../vendor/jsm/BufferGeometryUtils.js";
 import { buildCenterline, nearest, groundH, hills, smooth, lerp, clamp } from "./trackmath.js";
 
 export const THEMES = {
@@ -76,14 +76,23 @@ function cloudTexture() {
 export function makeSky(th) {
   const mat = new THREE.ShaderMaterial({
     side: THREE.BackSide, depthWrite: false, fog: false,
-    uniforms: { top: { value: new THREE.Color(th.top) }, hor: { value: new THREE.Color(th.hor) }, bot: { value: new THREE.Color(th.bot) }, sun: { value: new THREE.Vector3(...th.sunDir).normalize() }, sunCol: { value: new THREE.Color(th.sunCol) }, stars: { value: th.stars } },
+    uniforms: { top: { value: new THREE.Color(th.top) }, hor: { value: new THREE.Color(th.hor) }, bot: { value: new THREE.Color(th.bot) }, sun: { value: new THREE.Vector3(...th.sunDir).normalize() }, sunCol: { value: new THREE.Color(th.sunCol) }, stars: { value: th.stars }, cover: { value: th.clouds ? .5 : 0 }, cb: { value: Math.max(.15, Math.min(1, th.sunI / 2.8)) }, uT: { value: 0 } },
     vertexShader: "varying vec3 vD; void main(){ vD=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); gl_Position.z=gl_Position.w; }",
-    fragmentShader: `varying vec3 vD; uniform vec3 top,hor,bot,sun,sunCol; uniform float stars;
+    fragmentShader: `varying vec3 vD; uniform vec3 top,hor,bot,sun,sunCol; uniform float stars,cover,cb,uT;
+      float h2(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+      float n2(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h2(i),h2(i+vec2(1.,0.)),f.x),mix(h2(i+vec2(0.,1.)),h2(i+vec2(1.,1.)),f.x),f.y); }
+      float fbm(vec2 p){ float a=.5,s=0.; for(int i=0;i<5;i++){ s+=a*n2(p); p=p*2.03+17.1; a*=.5; } return s; }
       float hash(vec3 p){ p=fract(p*.3183099+.1); p*=17.; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
       void main(){ vec3 d=normalize(vD); float h=d.y;
         vec3 c = h>0. ? mix(hor,top,pow(h,.55)) : mix(hor,bot,pow(-h,.45));
         float sd=max(dot(d,normalize(sun)),0.);
         c += sunCol*(pow(sd,900.)*6. + pow(sd,40.)*.35 + pow(sd,6.)*.12);
+        if(cover>0. && h>.015){
+          vec2 q=d.xz/(h+.14)*.62+vec2(uT*.006,uT*.002); float f=fbm(q), t=mix(.64,.36,cover);
+          float dens=smoothstep(t,t+.2,f)*smoothstep(.015,.16,h);
+          vec3 sd2=normalize(sun); float f2=fbm(q+sd2.xz*.07); float lit=clamp((f-f2)*3.2+.62,0.,1.);
+          vec3 lc=mix(vec3(1.),sunCol,.45)*(.95+.35*lit), dc=mix(hor,vec3(.52,.56,.64),.5)*.78;
+          vec3 cc=mix(dc,lc,lit)*cb; c=mix(c,cc,dens*.93*smoothstep(.015,.12,h)); }
         if(stars>0. && h>0.){ vec3 q=floor(d*220.); float s=step(.9965,hash(q)); c += vec3(s)*stars*smoothstep(.02,.3,h); }
         gl_FragColor=vec4(c,1.); }`
   });
@@ -139,7 +148,8 @@ export function buildWorld(def, quality) {
   tg.setAttribute("color", new THREE.BufferAttribute(cols, 3));
   tg.computeVertexNormals();
   const gtex = groundTexture([215, 215, 215]);
-  const terrain = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ map: gtex, vertexColors: true, roughness: 1, metalness: 0 }));
+  const gm2 = asphaltMaps(ANISO); gm2.normal.repeat.set(2.4, 2.4);
+  const terrain = new THREE.Mesh(tg, new THREE.MeshStandardMaterial({ map: gtex, vertexColors: true, roughness: 1, metalness: 0, normalMap: gm2.normal, normalScale: new THREE.Vector2(.55, .55) }));
   terrain.receiveShadow = true; root.add(terrain);
 
   /* --- смуга-стрічка вздовж траси --- */
@@ -226,15 +236,34 @@ export function buildWorld(def, quality) {
   /* --- дерева / скелі --- */
   const treeN = quality.trees, pine = th.tree === "pine";
   let tg1;
+  const tier = quality.post ? 1 : quality.shadow ? .75 : .5, seg = quality.post ? 11 : quality.shadow ? 8 : 6;
+  const smoothG = g => { g.deleteAttribute("normal"); g.deleteAttribute("uv"); const m = mergeVertices(g, 1e-4); m.computeVertexNormals(); return m; };
+  const noisy = (g, fn) => { const p = g.attributes.position, cs = new Float32Array(p.count * 3); let mnY = 1e9, mxY = -1e9; for (let k = 0; k < p.count; k++) { mnY = Math.min(mnY, p.getY(k)); mxY = Math.max(mxY, p.getY(k)); }
+    for (let k = 0; k < p.count; k++) { const r = fn(p.getX(k), p.getY(k), p.getZ(k), (p.getY(k) - mnY) / (mxY - mnY || 1)); p.setXYZ(k, r[0], r[1], r[2]); cs[k * 3] = r[3]; cs[k * 3 + 1] = r[4]; cs[k * 3 + 2] = r[5]; }
+    g.setAttribute("color", new THREE.BufferAttribute(cs, 3)); return smoothG(g); };
   if (pine) {
-    const parts = [[3.1, 4.2, 0], [2.4, 3.8, 2.4], [1.7, 3.4, 4.6]].map(([r, hh, y]) => new THREE.ConeGeometry(r, hh, 8).translate(0, y + hh / 2, 0));
+    const T0 = Math.max(3, Math.round(8 * tier)), parts = [];
+    for (let t = 0; t < T0; t++) {
+      const k = t / (T0 - 1), r = 3.3 * (1 - k * .8) + .3, hh = (2.9 - k * .9) * (8 / T0 * .6 + .4), y = k * 7.2;
+      const g = new THREE.ConeGeometry(r, hh, seg, 2, true).translate(0, y + hh / 2, 0), ph = t * 1.7;
+      parts.push(noisy(g, (x, yy, z, hv) => { const a = Math.atan2(z, x), rr = Math.hypot(x, z), f = 1 + .17 * Math.sin(a * 5 + ph) + .1 * Math.sin(a * 11 + ph * 2), d = hv < .5 ? .14 * rr : 0, sh = .42 + .55 * Math.pow(hv, .7) + .1 * Math.sin(a * 7 + ph);
+        return [x * f, yy - d * (1 - hv), z * f, .55 * sh, .9 * sh, .55 * sh]; }));
+    }
     tg1 = mergeGeometries(parts);
-  } else tg1 = new THREE.DodecahedronGeometry(2.4, 1);
-  const tmat = new THREE.MeshStandardMaterial({ color: th.treeCol, roughness: .95, flatShading: true });
+  } else {
+    const parts = [];
+    for (const [ox, oy, oz, r] of [[0, 0, 0, 2.1], [1.5, -.3, .6, 1.5], [-1.4, -.2, -.5, 1.55], [.3, 1.2, -.9, 1.4], [-.4, .9, 1.2, 1.35], [.2, 1.7, .2, 1.2]].slice(0, quality.post ? 6 : 4)) {
+      const g = new THREE.IcosahedronGeometry(r, quality.post ? 2 : 1).translate(ox, oy, oz), ph = ox * 3 + oy;
+      parts.push(noisy(g, (x, yy, z, hv) => { const f = 1 + .16 * Math.sin(x * 3.1 + ph) * Math.cos(z * 2.7 - ph) + .1 * Math.sin(x * 7 + z * 6), sh = .5 + .55 * hv + .1 * Math.sin(x * 5 + z * 4);
+        return [ox + (x - ox) * f, oy + (yy - oy) * f * .85, oz + (z - oz) * f, .6 * sh, .95 * sh, .5 * sh]; }));
+    }
+    tg1 = mergeGeometries(parts);
+  }
+  const tmat = new THREE.MeshStandardMaterial({ color: th.treeCol, roughness: .92, vertexColors: true, side: THREE.DoubleSide });
   const inst = new THREE.InstancedMesh(tg1, tmat, treeN);
   const trunkG = new THREE.CylinderGeometry(.35, .5, 2.2, 5), trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x4a3524, roughness: 1 }), treeN);
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), sc = new THREE.Vector3(), col = new THREE.Color();
-  const bushN = Math.floor(treeN * .55), bush = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: th.treeCol, roughness: 1, flatShading: true }), bushN);
+  const bushN = Math.floor(treeN * .55), bush = new THREE.InstancedMesh(smoothG(new THREE.IcosahedronGeometry(1, quality.post ? 2 : 1)), new THREE.MeshStandardMaterial({ color: th.treeCol, roughness: 1 }), bushN);
   let placed = 0, tries = 0;
   while (placed < treeN && tries < treeN * 30) {
     tries++;
@@ -278,29 +307,23 @@ export function buildWorld(def, quality) {
   }
 
   /* --- гори на горизонті --- */
-  const mm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true, fog: false });
+  const mm = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, fog: false });
   const rad = Math.hypot(sx, sz) / 2 + 700, base = new THREE.Color(th.mount).lerp(new THREE.Color(th.hor), .35), peak = th.tree === "pine" && th.ground[0] > 200 ? new THREE.Color(0xf4f8ff) : new THREE.Color(0xe9eef5).lerp(new THREE.Color(th.hor), .25);
   const snowy = th.hill !== 20 && th.ground[0] > 200 || th.top === 0x2c6cc0;
   for (let i = 0; i < 34; i++) {
     const a = i / 34 * Math.PI * 2 + Math.random() * .2, r = rad + Math.random() * 600;
-    const g = new THREE.IcosahedronGeometry(1, 3), p = g.attributes.position, cs = new Float32Array(p.count * 3), ph = Math.random() * 10;
+    const g = new THREE.IcosahedronGeometry(1, quality.post ? 4 : 3), p = g.attributes.position, cs = new Float32Array(p.count * 3), ph = Math.random() * 10;
     for (let k = 0; k < p.count; k++) {
       let x = p.getX(k), y = p.getY(k), z = p.getZ(k);
       const nz = 1 + .22 * Math.sin(x * 5 + ph) * Math.cos(z * 4.3 + ph) + .12 * Math.sin(x * 11 + z * 9 + ph) + (y > .3 ? .18 * Math.sin(x * 7 - z * 6) : 0);
       p.setXYZ(k, x * nz, y > 0 ? y * (1 + .25 * Math.abs(Math.sin(x * 6 + ph * 2))) : y, z * nz);
       const hh = clamp(y * 1.2, 0, 1), sn = snowy ? smooth(.52, .8, hh + .07 * Math.sin(x * 14 + z * 12)) : 0;
-      const c = base.clone().multiplyScalar(.82 + hh * .3 + .1 * Math.sin(x * 9 + z * 7)).lerp(peak, sn);
+      const c = base.clone().multiplyScalar(.82 + hh * .3 + .1 * Math.sin(x * 9 + z * 7) + .06 * Math.sin(x * 23 + z * 19)).lerp(peak, sn).lerp(new THREE.Color(th.hor), clamp((1 - hh) * .5, 0, .5));
       cs[k * 3] = c.r; cs[k * 3 + 1] = c.g; cs[k * 3 + 2] = c.b;
     }
-    g.setAttribute("color", new THREE.BufferAttribute(cs, 3)); g.computeVertexNormals();
-    const m = new THREE.Mesh(g, mm), w = 380 + Math.random() * 460, h = 170 + Math.random() * 300;
+    g.setAttribute("color", new THREE.BufferAttribute(cs, 3)); g.deleteAttribute("normal"); g.deleteAttribute("uv");
+    const m = new THREE.Mesh((() => { const sg = mergeVertices(g, 1e-4); sg.computeVertexNormals(); return sg; })(), mm), w = 380 + Math.random() * 460, h = 170 + Math.random() * 300;
     m.scale.set(w, h, w); m.position.set(cx + Math.cos(a) * r, h * .22 - 40, cz + Math.sin(a) * r); m.rotation.y = Math.random() * 6; root.add(m);
-  }
-
-  /* --- хмари --- */
-  if (th.clouds) {
-    const ct = cloudTexture(), cm = new THREE.SpriteMaterial({ map: ct, fog: false, depthWrite: false, opacity: .9, color: th.sunCol });
-    for (let i = 0; i < 22; i++) { const s = new THREE.Sprite(cm); const a = Math.random() * 6.28, r = 500 + Math.random() * 2200; s.position.set(cx + Math.cos(a) * r, 380 + Math.random() * 300, cz + Math.sin(a) * r); const w = 500 + Math.random() * 600; s.scale.set(w, w * .45, 1); root.add(s); }
   }
 
   /* --- ліхтарі вночі --- */
