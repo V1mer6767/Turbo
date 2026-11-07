@@ -5,12 +5,17 @@ import { nearest, clamp, lerp, angDiff } from "./trackmath.js";
 export const CARS = [
   { id: "city", name: "BMW M5", kind: "sedan", price: 0, vmax: 52, acc: 8.2, brake: 12, mu: 1.4, steer: 1, L: 4.99, W: 1.95, roof: 1.45, color: "#3b82f6", snd: 1.0, desc: "Reliable starter" },
   { id: "sport", name: "BMW M4", kind: "coupe", price: 600, vmax: 62, acc: 10.5, brake: 13, mu: 1.55, steer: 1, L: 4.8, W: 1.9, roof: 1.39, color: "#ef4444", snd: 1.15, desc: "Fast and obedient" },
+  { id: "f430", name: "Ferrari F430", kind: "gt", price: 1100, vmax: 66, acc: 11.8, brake: 13, mu: 1.5, steer: 1.0, L: 4.49, W: 1.92, roof: 1.21, color: "#ef4444", snd: 1.15, desc: "Screaming flat-plane V8" },
   { id: "muscle", name: "McLaren 570S", kind: "muscle", price: 1500, vmax: 70, acc: 12.5, brake: 13, mu: 1.42, steer: 1, L: 4.53, W: 1.95, roof: 1.2, color: "#f59e0b", snd: .72, desc: "Powerful, loves to slide" },
   { id: "p930", name: "Porsche 911", kind: "coupe", price: 1900, vmax: 68, acc: 12.8, brake: 13, mu: 1.45, steer: 1.02, L: 4.29, W: 1.78, roof: 1.32, color: "#f59e0b", snd: 1.1, desc: "Turbocharged legend" },
+  { id: "roma", name: "Ferrari Roma", kind: "gt", price: 2100, vmax: 72, acc: 13.2, brake: 13.5, mu: 1.55, steer: 1.0, L: 4.66, W: 1.95, roof: 1.3, color: "#e5e7eb", snd: 1.05, desc: "Elegant twin-turbo V8 coupe" },
   { id: "gt", name: "Ferrari 812", kind: "gt", price: 2400, vmax: 76, acc: 14, brake: 14, mu: 1.62, steer: 1, L: 4.66, W: 1.97, roof: 1.28, color: "#dc2626", snd: 1.05, desc: "V12 grand tourer" },
+  { id: "gallardo", name: "Lamborghini Gallardo", kind: "hyper", price: 2600, vmax: 75, acc: 13.8, brake: 14, mu: 1.58, steer: 1.0, L: 4.3, W: 1.9, roof: 1.12, color: "#facc15", snd: 1.2, desc: "Raw V10 icon" },
   { id: "f40", name: "Ferrari F40", kind: "gt", price: 2800, vmax: 77, acc: 14.4, brake: 14, mu: 1.6, steer: 1.0, L: 4.36, W: 1.97, roof: 1.13, color: "#dc2626", snd: 1.2, desc: "Twin-turbo V8, no compromises" },
+  { id: "artura", name: "McLaren Artura", kind: "hyper", price: 3000, vmax: 78, acc: 14.6, brake: 14.5, mu: 1.7, steer: 1.03, L: 4.54, W: 1.93, roof: 1.2, color: "#f97316", snd: 1.0, desc: "Hybrid twin-turbo V6" },
   { id: "huracan", name: "Lamborghini Huracán", kind: "hyper", price: 3200, vmax: 79, acc: 14.8, brake: 14.5, mu: 1.72, steer: 1.03, L: 4.52, W: 1.93, roof: 1.14, color: "#84cc16", snd: 1.2, desc: "V10, loud and angry" },
-  { id: "hyper", name: "Ferrari 488 Pista", kind: "hyper", price: 3800, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.57, W: 1.97, roof: 1.2, color: "#a855f7", snd: 1.3, desc: "King of the track" }
+  { id: "hyper", name: "Ferrari 488 Pista", kind: "hyper", price: 3800, vmax: 82, acc: 15.5, brake: 15, mu: 1.8, steer: 1.05, L: 4.57, W: 1.97, roof: 1.2, color: "#a855f7", snd: 1.3, desc: "King of the track" },
+  { id: "revuelto", name: "Lamborghini Revuelto", kind: "hyper", price: 4400, vmax: 85, acc: 16.2, brake: 15.5, mu: 1.85, steer: 1.06, L: 4.95, W: 2.0, roof: 1.17, color: "#22d3ee", snd: 1.3, desc: "V12 hybrid, 1015 hp" }
 ];
 export const COLORS = ["#3b82f6", "#ef4444", "#f59e0b", "#22c55e", "#a855f7", "#f4f4f5", "#111827", "#14b8a6", "#ec4899"];
 const WB = 2.7;
@@ -105,7 +110,7 @@ export const UPS = [
 ];
 export const UP_MAX = 3;
 export const upCost = (sp, lvl) => Math.round((250 + sp.price * .3) * Math.pow(1.9, lvl) / 10) * 10;
-export const HP = { city: 460, sport: 510, muscle: 650, gt: 780, hyper: 900, huracan: 640, p930: 380, f40: 478 };
+export const HP = { city: 460, sport: 510, muscle: 650, gt: 780, hyper: 900, huracan: 640, p930: 380, f40: 478, f430: 490, roma: 612, gallardo: 560, artura: 671, revuelto: 1015 };
 export const hpOf = (sp, up) => Math.round((HP[sp.id] || 400) * (1 + .1 * ((up && up.eng) | 0)));
 export const stageOf = up => up ? UPS.reduce((a, u) => a + (up[u.k] | 0), 0) : 0;
 export function tuned(sp, up) {

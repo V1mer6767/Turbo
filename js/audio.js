@@ -19,6 +19,11 @@ const ENG = {
 };
 ENG.p930 = Object.assign({}, ENG.sport, { idle: 850, red: 6800, roll: 1.2, fire: [[0,1],[1/6,.55],[2/6,1.3],[3/6,.7],[4/6,1.2],[5/6,.65]] });   // оппозитна шістка
 ENG.f40 = Object.assign({}, ENG.gt, { idle: 1000, red: 7800, roll: 1.1, fire: [[0,1],[.12,.6],[.26,1.3],[.37,.7],[.5,1.2],[.62,.65],[.76,1.35],[.88,.7]] });   // twin-turbo V8
+ENG.f430 = Object.assign({}, ENG.gt, { idle: 1000, red: 8500, roll: 1.1, fire: [[0,1],[.12,.62],[.25,1.3],[.38,.7],[.5,1.2],[.63,.65],[.75,1.35],[.88,.7]] });
+ENG.roma = Object.assign({}, ENG.gt, { idle: 850, red: 7000, roll: .9 });
+ENG.gallardo = Object.assign({}, ENG.hyper, { idle: 900, red: 8000, roll: 1.2, fire: [[0,1],[.1,.62],[.2,1.3],[.3,.72],[.4,1.2],[.5,.66],[.6,1.35],[.7,.74],[.8,1.1],[.9,.7]] });
+ENG.artura = Object.assign({}, ENG.sport, { idle: 800, red: 8200, roll: 1, fire: [[0,1],[1/6,.5],[2/6,1.35],[3/6,.65],[4/6,1.25],[5/6,.7]] });
+ENG.revuelto = Object.assign({}, ENG.hyper, { idle: 900, red: 9000, roll: 1.2 });
 ENG.huracan = Object.assign({}, ENG.hyper, { idle: 900, red: 8400, roll: 1.1, fire: [[0.0000,1],[0.1040,0.6],[0.1940,1.3],[0.3050,0.7],[0.3960,1.2],[0.5060,0.65],[0.5950,1.35],[0.7040,0.75],[0.7940,1.1],[0.9050,0.7]] });   // V10: щільний, високий, злий
 export function audioInit() {
   if (AC) { if (AC.state === "suspended") AC.resume(); return; }

@@ -6,7 +6,7 @@
 
 
 ## Моделі машин (CC BY 4.0)
-Моделі оброблені (спрощені, колеса окремо, перефарбовування): BMW M5 F90 — RES1N; BMW M4 Competition — RES1N; McLaren 570S — Ddiaz Design; Cavallo 812 Superfast — Galaxy Car Showroom; Ferrari 488 Pista Spider — Ddiaz Design; Lamborghini Huracán EVO — Galaxy Car Showroom; Ferrari F40 — Black Snow; Porsche 911 Carrera 4S — Lionsharp Studios (ліцензія [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)). Джерело: Sketchfab, ліцензія [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+Моделі оброблені (спрощені, колеса окремо, перефарбовування): BMW M5 F90 — RES1N; BMW M4 Competition — RES1N; McLaren 570S — Ddiaz Design; Cavallo 812 Superfast — Galaxy Car Showroom; Ferrari 488 Pista Spider — Ddiaz Design; Lamborghini Huracán EVO — Galaxy Car Showroom; Ferrari F40 — Black Snow; Porsche 911 Carrera 4S — Lionsharp Studios; Ferrari Roma, Lamborghini Revuelto, McLaren Artura, Lamborghini Gallardo, Ferrari F430 (авторів див. у license.txt кожної моделі на Sketchfab) (ліцензія [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)). Джерело: Sketchfab, ліцензія [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Режими
 - **Гонка**: 8 трас, 6 суперників.
