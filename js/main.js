@@ -4,10 +4,10 @@ import { buildWorld, makeSky } from "./world.js";
 import { buildArena, ARENAS } from "./arena.js";
 import { CARS, COLORS, Car, createCarModel, setCarColor, stepCar, syncModel, aiInput, collide, UPS, UP_MAX, upCost, stageOf, tuned, hpOf } from "./car.js";
 import * as A from "./audio.js";
-import { ensureCar, hasCar, MODEL_FILE } from "./models.js";
+import { ensureCar, hasCar, MODEL_FILE, setCarQ } from "./models.js";
 import { QUAL, QUAL_LIST, Post, Rain, Drops, applyRain, addHeadlights } from "./gfx.js";
 
-const BUILD = 43;
+const BUILD = 44;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
@@ -19,7 +19,7 @@ if (!S.garage) { S.garage = (S.owned || ["city"]).map(id => ({ uid: id, id, colo
 if (!S.garage.some(g => g.uid === S.sel)) S.sel = S.garage[0].uid;
 const save = () => { try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {} };
 if (S.quality === "cinematic") S.quality = "extreme";
-const qual = () => QUAL[S.quality] || QUAL.mid;
+const qual = () => { const q = QUAL[S.quality] || QUAL.mid; setCarQ(q); return q; };
 
 /* ---------------- рендер ---------------- */
 const canvas = $("#gl");
@@ -37,6 +37,14 @@ function setupWeather() {
   if (rainOn) { applyRain(W, true); rain = new Rain(qual().rain); scene.add(rain.obj); }
   if (drops) drops.on = rainOn;
   const es = new THREE.Scene(); es.add(W.sky.clone());
+  { // світ для відображень: земля/дорога внизу, дерева або будівлі по колу
+    const gc = rainOn ? .07 : .17, th = W.th, hor = new THREE.Color(th.hor);
+    const gnd = new THREE.Mesh(new THREE.CircleGeometry(4000, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(gc, gc, gc * 1.06), fog: false })); gnd.position.y = -2; es.add(gnd);
+    const pineEnv = th.tree === "pine", col = new THREE.Color(pineEnv ? th.treeCol : 0x555a63).multiplyScalar(pineEnv ? .55 : .9).lerp(hor, .35);
+    const bm = new THREE.MeshBasicMaterial({ color: col, fog: false });
+    for (let i = 0; i < 56; i++) { const a = i / 56 * 6.283 + Math.random() * .1, r = 230 + Math.random() * 260, hh = pineEnv ? 28 + Math.random() * 30 : 35 + Math.random() * 110;
+      const o = new THREE.Mesh(pineEnv ? new THREE.ConeGeometry(13 + Math.random() * 8, hh, 6) : new THREE.BoxGeometry(30 + Math.random() * 40, hh, 30 + Math.random() * 40), bm); o.position.set(Math.cos(a) * r, hh / 2 - 2, Math.sin(a) * r); es.add(o); }
+  }
   envRT = pmrem.fromScene(es, 0, 1, 6000); scene.environment = envRT.texture;
 }
 let prScale = 1;

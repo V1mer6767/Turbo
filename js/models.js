@@ -57,15 +57,41 @@ const EXTRA = {
     return { wheel };
   }
 };
+let CQ = {};
+export const setCarQ = q => { CQ = q || {}; };
+let flakeTex = null;
+function flakes() {   // дрібна металічна зернистість: випадкові мікронормалі, тайловиться
+  if (flakeTex) return flakeTex;
+  const N = 256, d = new Uint8ClampedArray(N * N * 4);
+  for (let i = 0; i < N * N; i++) { const a = Math.random() * 6.283, s = Math.pow(Math.random(), .6); const x = Math.cos(a) * s * .9, y = Math.sin(a) * s * .9, z = Math.sqrt(Math.max(0, 1 - x * x - y * y)); d[i * 4] = (x * .5 + .5) * 255; d[i * 4 + 1] = (y * .5 + .5) * 255; d[i * 4 + 2] = (z * .5 + .5) * 255; d[i * 4 + 3] = 255; }
+  const c = document.createElement("canvas"); c.width = c.height = N; c.getContext("2d").putImageData(new ImageData(d, N, N), 0, 0);
+  flakeTex = new THREE.CanvasTexture(c); flakeTex.wrapS = flakeTex.wrapT = THREE.RepeatWrapping; flakeTex.repeat.set(7, 7); flakeTex.anisotropy = 8; return flakeTex;
+}
 export function buildGLB(spec, color, envI, shadow = true) {
   const t = tpl[spec.id], meta = t.meta, L = meta.length, Wd = meta.width, H = meta.height;
   const root = new THREE.Group(); root.rotation.order = "YZX";
   const tilt = new THREE.Group(); tilt.rotation.order = "ZXY"; root.add(tilt);
-  const paint = new THREE.MeshPhysicalMaterial({ color, metalness: .45, roughness: .28, clearcoat: 1, clearcoatRoughness: .05, envMapIntensity: envI });
+  const rich = !!CQ.post;
+  const paint = new THREE.MeshPhysicalMaterial({ color, metalness: rich ? .7 : .45, roughness: rich ? .34 : .28, clearcoat: 1, clearcoatRoughness: rich ? .02 : .05, envMapIntensity: envI * (rich ? 1.15 : 1) });
+  let uvOK = true; t.scene.traverse(o => { if (o.isMesh && (Array.isArray(o.material) ? o.material : [o.material]).some(m => m.name === "paint") && !(o.geometry.attributes.uv && o.geometry.attributes.uv.count)) uvOK = false; });
+  if (rich && uvOK) { paint.normalMap = flakes(); paint.normalScale.set(.22, .22); paint.iridescence = .12; paint.iridescenceIOR = 1.35; paint.iridescenceThicknessRange = [120, 380]; }
+  const glass = new THREE.MeshPhysicalMaterial({ color: 0x06090c, metalness: .05, roughness: .03, transparent: true, opacity: rich ? .5 : .6, depthWrite: false, envMapIntensity: envI * 1.8, clearcoat: 1, clearcoatRoughness: 0, name: "glass" });
+  const rubberM = new Map(), metalM = new Map();
   const tail = new THREE.MeshStandardMaterial({ color: 0x400000, emissive: 0xff1010, emissiveIntensity: .7, roughness: .4 });
   const fix = (o, shadow) => o.traverse(c => {
     if (!c.isMesh) return;
-    const swap = m => { if (m.name === "paint") return paint; if (m.name === "tail") return tail; m.envMapIntensity = envI; return m; };
+    const inWheel = c.parent && /^wheel_/.test(c.parent.name);
+    const swap = m => {
+      if (m.name === "paint") return paint; if (m.name === "tail") return tail;
+      if (m.name === "glass" && !inWheel) return glass;
+      m.envMapIntensity = envI;
+      if (inWheel && m.color) {   // колесо: матова гума, дзеркальний метал дисків
+        const lum = m.color.r * .3 + m.color.g * .59 + m.color.b * .11;
+        if (m.map) { m.roughness = Math.min(m.roughness, .6); }
+        else if (lum < .14) { m.roughness = .88; m.metalness = 0; m.envMapIntensity = envI * .35; }
+        else if (lum > .35 || m.metalness > .5) { m.metalness = Math.max(m.metalness, .9); m.roughness = .22; m.envMapIntensity = envI * 1.25; }
+      }
+      return m; };
     c.material = Array.isArray(c.material) ? c.material.map(swap) : swap(c.material);
     c.castShadow = shadow && !(c.material.transparent); c.receiveShadow = false;
     if (c.material.name === "glass" || c.material.name === "glass_i") c.renderOrder = 2;
