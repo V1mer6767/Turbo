@@ -57,6 +57,7 @@ const EXTRA = {
     return { wheel };
   }
 };
+const NO_TAIL_GLOW = new Set(["huracan", "roma", "revuelto", "artura"]);
 let CQ = {};
 export const setCarQ = q => { CQ = q || {}; };
 let flakeTex = null;
@@ -78,6 +79,7 @@ export function buildGLB(spec, color, envI, shadow = true) {
   const glass = new THREE.MeshPhysicalMaterial({ color: 0x06090c, metalness: .05, roughness: .03, transparent: true, opacity: rich ? .5 : .6, depthWrite: false, envMapIntensity: envI * 1.8, clearcoat: 1, clearcoatRoughness: 0, name: "glass" });
   const rubberM = new Map(), metalM = new Map();
   const tail = new THREE.MeshStandardMaterial({ color: 0x400000, emissive: 0xff1010, emissiveIntensity: .7, roughness: .4 });
+  if (NO_TAIL_GLOW.has(spec.id)) { tail.color.setHex(0x1a0b0b); tail.emissive.setHex(0); tail.roughness = .15; tail.metalness = .3; }   // матеріал ліхтарів спільний для фар і стопів → без червоного свічення
   const fix = (o, shadow) => o.traverse(c => {
     if (!c.isMesh) return;
     const inWheel = c.parent && /^wheel_/.test(c.parent.name);
@@ -107,9 +109,6 @@ export function buildGLB(spec, color, envI, shadow = true) {
     const pivot = new THREE.Group(); pivot.position.copy(n.position);
     const spin = new THREE.Group(), c = n.clone(true); c.position.set(0, 0, 0); fix(c, shadow); spin.add(c); pivot.add(spin); tilt.add(pivot);
     wheels.push({ pivot, spin, front: q[0] === "f", r: w.r }); rs += w.r;
-  }
-  if (!t.hasTail) {
-    for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.BoxGeometry(.05, .06, Wd * .26), tail); b.position.set(-L / 2 + .015, H * .5, s * Wd * .27); tilt.add(b); }
   }
   const fm = new THREE.MeshBasicMaterial({ color: 0x66aaff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }), flames = [];
   for (const s of [-1, 1]) { const f = new THREE.Mesh(new THREE.ConeGeometry(.12, 1.2, 8), fm); f.rotation.z = Math.PI / 2; f.position.set(-L / 2 - .6, .38, s * Wd * .27); tilt.add(f); flames.push(f); }

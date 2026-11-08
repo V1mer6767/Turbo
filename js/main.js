@@ -7,7 +7,7 @@ import * as A from "./audio.js";
 import { ensureCar, hasCar, MODEL_FILE, setCarQ } from "./models.js";
 import { QUAL, QUAL_LIST, Post, Rain, Drops, applyRain, addHeadlights } from "./gfx.js";
 
-const BUILD = 44;
+const BUILD = 45;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const rnd = (a, b) => a + Math.random() * (b - a);
 
